@@ -1,19 +1,20 @@
 var express = require('express');
 var passport = require('passport');
+var crypto = require('crypto');
 var localStrategy = require('passport-local').Strategy;
 var User = require('../../models/user');
 var router = express.Router();
 
 passport.use(new localStrategy(
-  (username, password, callback) => {
-    User.getUserByUsername(username, (err, user) => {
+  (email, password, callback) => {
+    User.getByEmail(email, (err, user) => {
       if (err) callback(null, null, {
         'success': false,
         'error': err
       });
       else if (!user) callback(null, null, {
         'success': false,
-        'error': 'incorrect username or password'
+        'error': 'incorrect email or password'
       });
       else {
         User.comparePassword(password, user.password, (err, isMatch) => {
@@ -21,7 +22,7 @@ passport.use(new localStrategy(
           else if (isMatch) callback(null, user);
           else callback(null, null, {
             'success': false,
-            'error': 'incorrect username or password'
+            'error': 'incorrect email or password'
           });
         });
       }
@@ -40,12 +41,11 @@ passport.deserializeUser(function(id, done) {
 });
 
 router.post('/register', (req, res) => {
-  console.log(req.body);
-  User.createUser(req.body.username, req.body.password, req.body.email, (err, result) => {
-    if (err) return console.log(err);
+  User.createUser(req.body.email, req.body.password, (err, result) => {
+    if (err) return res.json({'success': false, 'error': "email address aleady used"});
     res.json({
       "success": true,
-      "username": req.body.username
+      "email": req.body.email
     });
   });
 });
@@ -53,15 +53,21 @@ router.post('/register', (req, res) => {
 router.post('/login', passport.authenticate('local'), (req, res) => {
   res.json({
     "success": true,
-    "username": req.user.username
+    "email": req.user.email
+  });
+});
+
+router.post('/forgot', (req, res) => {
+  res.json({
+    "success": false,
+    "error": "Password recovery is still a work in progress"
   });
 });
 
 router.get('/current', (req, res) => {
   if (req.user) {
     res.json({
-      'username': req.user.username,
-      'email': req.user.email,
+      'email': req.user.email
     });
   } else {
     res.json({
@@ -82,7 +88,20 @@ router.get('/tasks', (req, res) => {
       'error': "No user is logged in"
     });
   }
-})
+});
+
+router.get('/projects', (req, res) => {
+  if(req.user){
+    res.json({
+      'projects': req.user.projects
+    });
+  }else{
+    res.json({
+      'success': false,
+      'error': "No user is logged in"
+    });
+  }
+});
 
 router.get('/logout', (req, res) => {
   req.logout();

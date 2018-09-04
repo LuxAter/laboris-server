@@ -1,4 +1,5 @@
 const express = require('express');
+require('dotenv').config()
 
 var os = require('os');
 
@@ -21,12 +22,12 @@ app.use(formParser.parse({uploadDir: os.tmpdir(), autoClean: true}));
 app.use(formParser.format());
 app.use(formParser.stream());
 app.use(formParser.union());
-app.use(session({name:'session',secret:'laboris',resave:false,saveUninitialized:true}));
+app.use(session({name:'session',secret: process.env.SESSION_SECRET ,resave:false,saveUninitialized:true}));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-const mongodb = 'mongodb://ardenrasmussen:Tristan11@ds233452.mlab.com:33452/laboris';
+const mongodb = 'mongodb://admin:' + process.env.DB_SECRET + '@ds233452.mlab.com:33452/laboris';
 mongoose.connect(mongodb);
 mongoose.Promise=global.Promise;
 var db = mongoose.connection;
