@@ -10,7 +10,37 @@ router.get('/', (req, res) => {
       "error": "Must be logged in"
     });
   } else {
-    res.json(req.user.tasks);
+    User.serializeTasks(req.user.tasks, (err, data) => {
+      if(err)return res.json({'error': err});
+      else return res.json(data);
+    });
+  }
+});
+
+router.get('/done', (req, res) => {
+  if(!req.user){
+    return res.json({
+      'error': "Must be logged in"
+    });
+  }else{
+    User.serializeTasks(req.user.doneTasks, (err, data) => {
+      if(err)return res.json({'error': err});
+      else return res.json(data);
+    });
+  }
+});
+
+router.get('/:id', (req, res) => {
+  if(!req.user){
+    return res.json({});
+  }else{
+    User.findTask(req.user, req.params.id, (err, task) => {
+      if(err) return res.json({'error': err});
+      User.serializeTask(task, (err, data) => {
+        if(err) return res.json({'error': err});
+        else return res.json(data);
+      });
+    });
   }
 });
 
@@ -21,7 +51,7 @@ router.post('/create', (req, res) => {
       "error": "Must be logged in to create task"
     });
   }
-  User.createTask(req.user, req.body, (err, task) => {
+  User.createTask(req.user, req.body.title, req.body.projects, req.body.tags, req.body.priority, req.body.dueDate, (err, task) => {
     if (!err) return res.json(task);
     else return res.json({
       'success': false,
@@ -85,7 +115,7 @@ router.post('/modify/:id', (req, res) => {
       'error': "Must be logged in"
     });
   }
-  User.updateTask(req.user, req.params.id, req.body, (err, task) => {
+  User.modifyTask(req.user, req.params.id, req.body, (err, task) => {
     if (!err) return res.json(task);
     res.json({
       'success': false,
@@ -152,6 +182,22 @@ router.post('/stop/:id', (req, res) => {
       'error': err
     });
   });
+});
+
+router.post('/sync', (req, res) => {
+  if(!req.user){
+    return res.json({
+      'success': false,
+      "error": "Must be logged in"
+    });
+    User.sync(req.user, req.body, (err, user) => {
+      if(!err) return res.json(user);
+      else return res.json({
+        'success': false,
+        'error': err
+      });
+    });
+  }
 });
 
 module.exports = router;

@@ -28,7 +28,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 const mongodb = 'mongodb://admin:' + process.env.DB_SECRET + '@ds233452.mlab.com:33452/laboris';
-mongoose.connect(mongodb);
+mongoose.connect(mongodb, {useNewUrlParser: true});
 mongoose.Promise=global.Promise;
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
