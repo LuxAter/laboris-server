@@ -1,21 +1,21 @@
 <template>
   <div>
     <ToolBar></ToolBar>
-    <h1>Hello World!</h1>
-    <p>Email: {{ email }}</p>
+    <h1>Settings</h1>
+    <p>Count: {{ count }}</p>
   </div>
 </template>
 
 <script>
 import ToolBar from './ToolBar.vue'
 export default {
-  name: 'Home',
+  name: 'Settings',
   components: {
     ToolBar
   },
   computed: {
-    email () {
-      return this.$store.state.email
+    count () {
+      return this.$store.state.count
     }
   }
 }
