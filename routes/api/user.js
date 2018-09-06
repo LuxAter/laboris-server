@@ -9,11 +9,9 @@ passport.use(new localStrategy(
   (email, password, callback) => {
     User.getByEmail(email, (err, user) => {
       if (err) callback(null, null, {
-        'success': false,
         'error': err
       });
       else if (!user) callback(null, null, {
-        'success': false,
         'error': 'incorrect email or password'
       });
       else {
@@ -21,7 +19,6 @@ passport.use(new localStrategy(
           if (err) callback(err);
           else if (isMatch) callback(null, user);
           else callback(null, null, {
-            'success': false,
             'error': 'incorrect email or password'
           });
         });
@@ -40,79 +37,48 @@ passport.deserializeUser(function(id, done) {
   });
 });
 
-router.post('/register', (req, res) => {
+router.post('/create', (req, res) => {
   User.createUser(req.body.email, req.body.password, (err, result) => {
-    if (err) return res.json({'success': false, 'error': "email address aleady used"});
-    res.json({
-      "success": true,
-      "email": req.body.email
+    if (err) return res.json({ 'error': "email address aleady used" });
+    res.json({ "email": req.body.email });
+  });
+});
+
+router.post('/delete', (req, res) => {
+  if (!req.user) return res.json({
+    'error': 'must be loggedin'
+  });
+  User.deleteOne({
+    id: req.user.id
+  }, (err) => {
+    if (err) return res.json({
+      'error': err
     });
   });
 });
 
 router.post('/login', passport.authenticate('local'), (req, res) => {
   res.json({
-    "success": true,
     "email": req.user.email
   });
 });
 
+router.post('/logout', (req, res) => {
+  req.logout();
+});
+
 router.post('/forgot', (req, res) => {
   res.json({
-    "success": false,
     "error": "Password recovery is still a work in progress"
   });
 });
 
 router.get('/current', (req, res) => {
-  if (req.user) {
-    res.json({
-      'email': req.user.email
-    });
-  } else {
-    res.json({
-      'success': false,
-      'error': "No user is logged in"
-    });
-  }
-});
-
-router.get('/tasks', (req, res) => {
-  if (req.user) {
-    res.json({
-      'tasks': req.user.tasks
-    });
-  } else {
-    res.json({
-      'success': false,
-      'error': "No user is logged in"
-    });
-  }
-});
-
-router.get('/projects', (req, res) => {
-  if(req.user){
-    res.json({
-      'projects': req.user.projects
-    });
-  }else{
-    res.json({
-      'success': false,
-      'error': "No user is logged in"
-    });
-  }
-});
-
-router.get('/logout', (req, res) => {
-  req.logout();
-  res.json({
-    'success': true
+  if (req.user) res.json({
+    'email': req.user.email
   });
-});
-router.post('/logout', (req, res) => {
-  req.logout();
-  res.json({
-    'success': true
+  else res.json({
+    'error': "No user is logged in"
   });
 });
 

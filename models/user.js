@@ -2,6 +2,9 @@ var mongoose = require('mongoose');
 var bcrypt = require('bcryptjs');
 var uuidv1 = require('uuid/v1');
 
+var Project = require('./project');
+var Task = require('./task');
+
 mongoose.set('useCreateIndex', true);
 
 function roundDate(timeStamp) {
@@ -54,26 +57,6 @@ function findByKey(array, key, value) {
   return array.id(findIdByKey(array, key, value));
 }
 
-var taskSchema = mongoose.Schema({
-  title: String,
-  projects: [String],
-  tags: [String],
-  uuid: String,
-  priority: Number,
-  modifiedDate: Date,
-  entryDate: Date,
-  dueDate: Date,
-  doneDate: Date,
-  status: {
-    type: String,
-    enum: ['NONE', 'PENDING', 'DONE']
-  },
-  times: [{
-    start: Date,
-    end: Date
-  }]
-});
-
 var userSchema = mongoose.Schema({
   email: {
     type: String,
@@ -86,12 +69,11 @@ var userSchema = mongoose.Schema({
   },
   resetPasswordToken: String,
   resetPasswordExpires: String,
-  tasks: [taskSchema],
-  doneTasks: [taskSchema],
+  projects: [Project.schema],
+  tasks: [Task.schema],
 });
 
 var User = module.exports = mongoose.model('User', userSchema);
-var Task = mongoose.model('Task', taskSchema);
 
 module.exports.createUser = (email, password, callback) => {
   bcrypt.genSalt(10, (err, salt) => {
@@ -126,73 +108,7 @@ module.exports.deserialize = (id, callback) => {
 module.exports.serializeUser = (user, callback) => {
   var obj = {
     email: user.email,
-    tasks: user.tasks.map((task) => {
-      return {
-        title: task.title,
-        projects: task.projects,
-        tags: task.tags,
-        uuid: task.uuid,
-        priority: task.priority,
-        modifiedDate: task.modifiedDate.getTime() / 1000,
-        entryDate: task.entryDate.getTime() / 1000,
-        dueDate: task.dueDate ? task.dueDate.getTime() / 1000 : null,
-        doneDate: task.doneDate ? task.doneDate.getTime() / 1000 : null,
-        status: task.status,
-        times: task.times.map((time) => {
-          return {
-            start: time.start.getTime() / 1000,
-            end: time.end ? time.end.getTime() / 1000 : null
-          }
-        })
-      };
-    })
   };
-  callback(null, obj);
-}
-
-module.exports.serializeTask = (task, callback) => {
-  var obj = {
-    title: task.title,
-    projects: task.projects,
-    tags: task.tags,
-    uuid: task.uuid,
-    priority: task.priority,
-    modifiedDate: task.modifiedDate.getTime() / 1000,
-    entryDate: task.entryDate.getTime() / 1000,
-    dueDate: task.dueDate ? task.dueDate.getTime() / 1000 : null,
-    doneDate: task.doneDate ? task.doneDate.getTime() / 1000 : null,
-    status: task.status,
-    times: task.times.map((time) => {
-      return {
-        start: time.start.getTime() / 1000,
-        end: time.end ? time.end.getTime() / 1000 : null
-      }
-    })
-  }
-  callback(null, obj);
-}
-
-module.exports.serializeTasks = (tasks, callback) => {
-  var obj = tasks.map((task) => {
-    return {
-      title: task.title,
-      projects: task.projects,
-      tags: task.tags,
-      uuid: task.uuid,
-      priority: task.priority,
-      modifiedDate: task.modifiedDate.getTime() / 1000,
-      entryDate: task.entryDate.getTime() / 1000,
-      dueDate: task.dueDate ? task.dueDate.getTime() / 1000 : null,
-      doneDate: task.doneDate ? task.doneDate.getTime() / 1000 : null,
-      status: task.status,
-      times: task.times.map((time) => {
-        return {
-          start: time.start.getTime() / 1000,
-          end: time.end ? time.end.getTime() / 1000 : null
-        }
-      })
-    };
-  });
   callback(null, obj);
 }
 
@@ -273,10 +189,6 @@ module.exports.deleteTask = (user, id, callback) => {
     _id: findIdByKey(user.tasks, 'uuid', id)
   });
   user.save(callback);
-}
-
-module.exports.findTask = (user, id, callback) => {
-  callback(null, findByKey(user.tasks, 'uuid', id));
 }
 
 module.exports.completeTask = (user, id, callback) => {
