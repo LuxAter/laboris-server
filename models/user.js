@@ -174,31 +174,80 @@ module.exports.serializeTask = (task, callback) => {
 
 module.exports.serializeTasks = (tasks, callback) => {
   var obj = tasks.map((task) => {
-      return {
-        title: task.title,
-        projects: task.projects,
-        tags: task.tags,
-        uuid: task.uuid,
-        priority: task.priority,
-        modifiedDate: task.modifiedDate.getTime() / 1000,
-        entryDate: task.entryDate.getTime() / 1000,
-        dueDate: task.dueDate ? task.dueDate.getTime() / 1000 : null,
-        doneDate: task.doneDate ? task.doneDate.getTime() / 1000 : null,
-        status: task.status,
-        times: task.times.map((time) => {
-          return {
-            start: time.start.getTime() / 1000,
-            end: time.end ? time.end.getTime() / 1000 : null
-          }
-        })
-      };
+    return {
+      title: task.title,
+      projects: task.projects,
+      tags: task.tags,
+      uuid: task.uuid,
+      priority: task.priority,
+      modifiedDate: task.modifiedDate.getTime() / 1000,
+      entryDate: task.entryDate.getTime() / 1000,
+      dueDate: task.dueDate ? task.dueDate.getTime() / 1000 : null,
+      doneDate: task.doneDate ? task.doneDate.getTime() / 1000 : null,
+      status: task.status,
+      times: task.times.map((time) => {
+        return {
+          start: time.start.getTime() / 1000,
+          end: time.end ? time.end.getTime() / 1000 : null
+        }
+      })
+    };
   });
   callback(null, obj);
 }
 
 module.exports.sync = (user, body, callback) => {
-  // TODO Create sync system
+  var tasks = JSON.parse(body);
+  for (var task in tasks) {
+    var mid = findIdByKey(user.tasks, 'uuid', task.uuid);
+    if (mid !== null) {
+      var mTask = user.tasks.id(mid);
+      if (new Date(task.modifiedDate) > mTask.modifiedDate) {
+        mtask = task
+      }
+    } else {
+      var tsk = new Task(task);
+      user.tasks.push(tsk);
+    }
+  }
   user.save(callback);
+}
+
+module.exports.upload = (user, body, callback) => {
+  var task = JSON.parse(body);
+  var mid = findIdByKey(user.tasks, 'uuid', task.uuid);
+  if (mid !== null) {
+    var mTask = user.tasks.id(mid);
+    if (new Date(task.modifiedDate) > mTask.modifiedDate) {
+      mTask = task;
+    }
+  } else {
+    var newTask = new Task(task);
+    user.tasks.push(newTask);
+  }
+  user.save((err, user) => {
+    callback(err, newTask);
+  });
+}
+
+module.exports.compleatedTasks = (user, callback) => {
+  var task = []
+  for (var i = 0; i < user.tasks.length; i++) {
+    if ('status' in user.tasks[i] && user.tasks[i]['status'] == 'DONE') {
+      task.push(user.tasks[i]);
+    }
+  }
+  callback(null, task);
+}
+
+module.exports.pendingTasks = (user, callback) => {
+  var task = []
+  for (var i = 0; i < user.tasks.length; i++) {
+    if ('status' in user.tasks[i] && user.tasks[i]['status'] == 'PENDING') {
+      task.push(user.tasks[i]);
+    }
+  }
+  callback(null, task);
 }
 
 module.exports.createTask = (user, title, projects, tags, priority, due_date, callback) => {

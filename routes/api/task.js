@@ -11,33 +11,66 @@ router.get('/', (req, res) => {
     });
   } else {
     User.serializeTasks(req.user.tasks, (err, data) => {
-      if(err)return res.json({'error': err});
+      if (err) return res.json({
+        'error': err
+      });
       else return res.json(data);
     });
   }
 });
 
-router.get('/done', (req, res) => {
-  if(!req.user){
+router.get('/compleated', (req, res) => {
+  if (!req.user) {
     return res.json({
       'error': "Must be logged in"
     });
-  }else{
-    User.serializeTasks(req.user.doneTasks, (err, data) => {
-      if(err)return res.json({'error': err});
-      else return res.json(data);
+  } else {
+    User.compleatedTasks(req.user, (err, tasks) => {
+      if (err) return res.json({
+        'error': err
+      });
+      User.serializeTasks(tasks, (err, data) => {
+        if (err) return res.json({
+          'error': err
+        });
+        else return res.json(data);
+      });
+    });
+  }
+});
+
+router.get('/pending', (req, res) => {
+  if (!req.user) {
+    return res.json({
+      'error': "Must be logged in"
+    });
+  } else {
+    User.pendingTasks(req.user, (err, tasks) => {
+      if (err) return res.json({
+        'error': err
+      });
+      User.serializeTasks(tasks, (err, data) => {
+        if (err) return res.json({
+          'error': err
+        });
+        else return res.json(data);
+      });
     });
   }
 });
 
 router.get('/:id', (req, res) => {
-  if(!req.user){
+  if (!req.user) {
     return res.json({});
-  }else{
+  } else {
     User.findTask(req.user, req.params.id, (err, task) => {
-      if(err) return res.json({'error': err});
+      if (err) return res.json({
+        'error': err
+      });
       User.serializeTask(task, (err, data) => {
-        if(err) return res.json({'error': err});
+        if (err) return res.json({
+          'error': err
+        });
         else return res.json(data);
       });
     });
@@ -185,19 +218,32 @@ router.post('/stop/:id', (req, res) => {
 });
 
 router.post('/sync', (req, res) => {
-  if(!req.user){
+  if (!req.user) {
     return res.json({
       'success': false,
       "error": "Must be logged in"
     });
-    User.sync(req.user, req.body, (err, user) => {
-      if(!err) return res.json(user);
-      else return res.json({
-        'success': false,
-        'error': err
-      });
+  }
+  User.sync(req.user, req.body.tasks, (err, user) => {
+    if (!err) return res.json(user);
+    else return res.json({
+      'error': err
+    });
+  });
+});
+
+router.post('/upload', (req, res) => {
+  if (!req.user) {
+    return res.json({
+      'error': "Must be logged in"
     });
   }
+  User.upload(req.user, req.body.task, (err, task) => {
+    if (!err) return res.json(task);
+    else return res.json({
+      'error': err
+    });
+  });
 });
 
 module.exports = router;
