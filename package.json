@@ -1,7 +1,8 @@
 {
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "build": "cd client && yarn run build"
   },
   "name": "laboris",
   "version": "1.0.0",

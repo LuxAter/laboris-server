@@ -25,14 +25,19 @@ const store = new Vuex.Store({
     }
   },
   actions: {
-    login ({ commit }, email, password) {
-      console.log(email, password)
-      axios.post('/api/user/login', {username: email, password: password}).then((res) => {
-        console.log('hello')
+    checkUser ({ commit }) {
+      axios.get('/api/user/current').then((res) => {
         if ('error' in res) commit('setError', res['error'])
         else commit('setEmail', res['email'])
       }).catch((err) => {
-        console.log('hi', err, 'more hi')
+        commit('setError', err)
+      })
+    },
+    login ({ commit }, payload) {
+      axios.post('/api/user/login', {username: payload[0], password: payload[1]}).then((res) => {
+        if ('error' in res) commit('setError', res['error'])
+        else commit('setEmail', res['email'])
+      }).catch((err) => {
         commit('setError', err)
       })
     }

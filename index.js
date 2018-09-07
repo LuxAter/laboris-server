@@ -2,6 +2,7 @@ const express = require('express');
 require('dotenv').config()
 
 var os = require('os');
+var path = require('path');
 
 var cookieParser = require('cookie-parser');
 var formParser = require('express-form-data');
@@ -23,6 +24,8 @@ app.use(formParser.format());
 app.use(formParser.stream());
 app.use(formParser.union());
 app.use(session({name:'session',secret: process.env.SESSION_SECRET ,resave:false,saveUninitialized:true}));
+app.use(express.static(path.join(__dirname, 'client/dist')));
+
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -40,5 +43,8 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/', apiRouter)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, "client/dist/index.html"));
+})
 
 app.listen(3000);

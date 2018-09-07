@@ -47,7 +47,8 @@ export default {
   },
   methods: {
     login () {
-      this.$store.dispatch('login', this.$data.email, this.$data.password)
+      console.log(this.$data.email, this.$data.password)
+      this.$store.dispatch('login', [this.$data.email, this.$data.password])
     }
   }
 }
