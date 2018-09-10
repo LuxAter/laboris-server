@@ -5,6 +5,7 @@
       <Login v-if="login"/>
       <CreateTask v-if="createTask"/>
       <CreateProject v-if="this.$store.state.createProject"/>
+      <TaskList v-if="nlogin" />
     </div>
     <Footer />
   </div>
@@ -15,6 +16,7 @@ import Navbar from './Navbar.vue'
 import Footer from './Footer.vue'
 import CreateTask from './CreateTask.vue'
 import CreateProject from './CreateProject.vue'
+import TaskList from './TaskList.vue'
 import Login from './Login.vue'
 export default {
   name: 'Home',
@@ -23,6 +25,7 @@ export default {
     Footer,
     CreateTask,
     CreateProject,
+    TaskList,
     Login
   },
   computed: {
@@ -31,6 +34,9 @@ export default {
     },
     login () {
       return (this.$store.state.email === null)
+    },
+    nlogin () {
+      return (this.$store.state.email !== null)
     },
     createTask () {
       return this.$store.state.createTask

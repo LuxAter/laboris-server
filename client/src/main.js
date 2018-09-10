@@ -33,6 +33,26 @@ const store = new Vuex.Store({
     },
     toggleCreateProject (state) {
       state.createProject = !state.createProject
+    },
+    setTasks (state, payload) {
+      state.tasks = payload
+    },
+    appendTask (state, payload) {
+      console.log(payload)
+      state.tasks.push({
+        uuid: payload.uuid,
+        modifiedDate: new Date(payload.modifiedDate),
+        title: payload['title'],
+        projects: payload.projects,
+        tags: payload.tags,
+        priority: payload.priority,
+        entryDate: new Date(payload.entryDate),
+        dueDate: payload.dueDate ? new Date(payload.dueDate) : null,
+        doneDate: payload.doneDate ? new Date(payload.doneDate) : null,
+        status: payload.status,
+        times: payload.times,
+        active: false
+      })
     }
   },
   actions: {
@@ -42,7 +62,15 @@ const store = new Vuex.Store({
         else {
           commit('setEmail', res.data['email'])
           axios.get(target + '/api/task/', {withCredentials: true}).then((res) => {
-            console.log(res)
+            if ('error' in res.data) commit('setError', res.data['error'])
+            else {
+              console.log(res.data)
+              for (var i = 0; i < res.data.length; i++) {
+                console.log(res.data[i])
+                commit('appendTask', res.data[i])
+              }
+              // commit('setTasks', res.data)
+            }
           })
         }
       }).catch((err) => {
@@ -55,7 +83,13 @@ const store = new Vuex.Store({
         else {
           commit('setEmail', res.data['email'])
           axios.get(target + '/api/task/', {withCredentials: true}).then((res) => {
-            console.log(res)
+            if ('error' in res.data) commit('setError', res.data['error'])
+            else {
+              for (var task in res.dat) {
+                commit('appendTask', task)
+              }
+              // commit('setTasks', res.data)
+            }
           })
         }
       }).catch((err) => {
@@ -64,11 +98,10 @@ const store = new Vuex.Store({
     },
     logout ({ commit }) {
       commit('setEmail', null)
-      // commit('setTasks', [])
+      commit('setTasks', [])
       axios.post(target + '/api/user/logout').then((res) => {
-        console.log(res)
       }).catch((err) => {
-        console.log(err)
+        commit('setError', err)
       })
     },
     getTasks ({ commit }) {

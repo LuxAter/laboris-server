@@ -9,17 +9,14 @@
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group col-md-1">
-            <img class="mx-auto my-auto" v-bind:src="'https://placehold.it/32/' + color + '/000000?text=+'">
-          </div>
-          <div class="form-group col-md-5">
+          <div class="form-group col-md-6">
             <div class="input-group col-md-12">
               <div class="input-group-prepend">
-                <button type="button" class="btn btn-primary" v-on:click="randomize()">
+                <button type="button" class="btn btn-primary" v-on:click="randomize()" v-bind:style="{ backgroundColor: '#' + color }">
                   <i class="fa fa-random"></i>
                 </button>
               </div>
-              <input type="text" class="form-control" placeholder="Color" />
+              <input type="text" class="form-control" v-model="color" value="color"/>
             </div>
           </div>
           <div class="form-group col-md-6">
