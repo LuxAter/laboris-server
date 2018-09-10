@@ -1,6 +1,6 @@
 <template>
   <form>
-    <div class="card col-md-9 mx-auto">
+    <div class="card col-md-9 mx-auto my-2">
       <div class="card-body">
         <h3 class="card-title">Create Task</h3>
         <div class="form-row">
@@ -24,7 +24,7 @@
             <input type="number" class="form-control" min="0" max="10" placeholder="0">
           </div>
           <div class="form-group col-md-4">
-            <button type="button" class="btn btn-secondary btn-block float-md-right">Create</button>
+            <button type="button" class="btn btn-success btn-block float-md-right">Create</button>
           </div>
         </div>
       </div>

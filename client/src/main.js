@@ -9,12 +9,17 @@ import router from './router'
 Vue.config.productionTip = false
 Vue.use(Vuex)
 
+const target = 'http://localhost:3000'
+// const target = ''
+
 /* eslint-disable no-new */
 const store = new Vuex.Store({
   state: {
     email: null,
     error: null,
-    createTask: false
+    tasks: [],
+    createTask: false,
+    createProject: false
   },
   mutations: {
     setEmail (state, payload) {
@@ -22,23 +27,55 @@ const store = new Vuex.Store({
     },
     setError (state, payload) {
       state.error = payload
+    },
+    toggleCreateTask (state) {
+      state.createTask = !state.createTask
+    },
+    toggleCreateProject (state) {
+      state.createProject = !state.createProject
     }
   },
   actions: {
     checkUser ({ commit }) {
-      axios.get('/api/user/current').then((res) => {
-        if ('error' in res) commit('setError', res['error'])
-        else commit('setEmail', res['email'])
+      axios.get(target + '/api/user/current', {withCredentials: true}).then((res) => {
+        if ('error' in res.data) commit('setError', res.data['error'])
+        else {
+          commit('setEmail', res.data['email'])
+          axios.get(target + '/api/task/', {withCredentials: true}).then((res) => {
+            console.log(res)
+          })
+        }
       }).catch((err) => {
         commit('setError', err)
       })
     },
     login ({ commit }, payload) {
-      axios.post('/api/user/login', {username: payload[0], password: payload[1]}).then((res) => {
-        if ('error' in res) commit('setError', res['error'])
-        else commit('setEmail', res['email'])
+      axios.post(target + '/api/user/login', {username: payload[0], password: payload[1]}, {withCredentials: true}).then((res) => {
+        if ('error' in res.data) commit('setError', res.data['error'])
+        else {
+          commit('setEmail', res.data['email'])
+          axios.get(target + '/api/task/', {withCredentials: true}).then((res) => {
+            console.log(res)
+          })
+        }
       }).catch((err) => {
         commit('setError', err)
+      })
+    },
+    logout ({ commit }) {
+      commit('setEmail', null)
+      // commit('setTasks', [])
+      axios.post(target + '/api/user/logout').then((res) => {
+        console.log(res)
+      }).catch((err) => {
+        console.log(err)
+      })
+    },
+    getTasks ({ commit }) {
+      axios.get(target + '/api/task/').then((res) => {
+        console.log(res)
+      }).catch((err) => {
+        console.log(err)
       })
     }
   }

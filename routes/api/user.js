@@ -65,6 +65,8 @@ router.post('/login', passport.authenticate('local'), (req, res) => {
 
 router.post('/logout', (req, res) => {
   req.logout();
+  req.session = null;
+  res.json({});
 });
 
 router.post('/forgot', (req, res) => {
