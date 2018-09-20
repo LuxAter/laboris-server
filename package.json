@@ -1,7 +1,8 @@
 {
   "scripts": {
     "start": "node index.js",
-    "dev": "concurrently --kill-others-on-fail \"nodemon index.js\" \"cd client && yarn run dev\"",
+    "server": "nodemon index.js",
+    "dev": "concurrently --kill-others-on-fail \"nodemon index.js\" \"cd client && yarn serve\"",
     "build": "cd client && yarn run build"
   },
   "name": "laboris",
