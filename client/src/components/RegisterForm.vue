@@ -13,7 +13,7 @@
     <div class="field">
       <label class="label">Password</label>
       <div class="control has-icons-left">
-        <input class="input" type="password" placeholder="password" v-model="password1" v-bind:class="{'is-wanring': !PasswordValidate(password1)}">
+        <input class="input" type="password" placeholder="password" v-model="password1" v-bind:class="{'is-warning': !PasswordValidate(password1)}">
         <span class="icon is-small is-left">
           <i class="fas fa-lock"></i>
         </span>
@@ -30,7 +30,15 @@
       </div>
       <p class="help is-danger" v-if="password1 !== password2">Passwords do not match</p>
     </div>
-    <button class="button is-block is-info is-fullwidth" v-if="EmailValidate(email) && PasswordValidate(password1) && password1 === password2 && email !== ''">Register</button>
+    <div class="notification is-danger" v-if="$store.state.error.register !== ''">
+      <button class="delete" v-on:click="$store.commit('setErrorRegister', '')" />
+      {{ $store.state.error.register }}
+    </div>
+    <div class="notification is-success" v-if="$store.state.success.register !== ''">
+      <button class="delete" v-on:click="$store.commit('setSuccessRegister', '')" />
+      {{ $store.state.success.register }}
+    </div>
+    <button class="button is-block is-info is-fullwidth" v-if="EmailValidate(email) && PasswordValidate(password1) && password1 === password2 && email !== ''" v-on:click="register()">Register</button>
     <button class="button is-block is-info is-fullwidth" disabled v-else>Register</button>
   </form>
 </template>
@@ -49,6 +57,10 @@ export default class LoginForm extends Vue {
   }
   private PasswordValidate(s: string) {
     return PasswordValidator(s);
+  }
+  private register() {
+    console.log("HI");
+    this.$store.dispatch('register', [this.email, this.password1]);
   }
 }
 </script>

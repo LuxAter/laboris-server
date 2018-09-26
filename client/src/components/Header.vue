@@ -1,6 +1,6 @@
 <template>
   <header>
-    <nav class="navbar is-primary has-shadow" role="navigation">
+    <nav class="navbar is-primary" role="navigation">
       <div class="navbar-brand">
         <div class="navbar-item">
           Laboris
@@ -11,7 +11,7 @@
           <span aria-hidden="true"></span>
         </a>
       </div>
-      <div class="navbar-menu" v-bind:class="{ 'is-active': menuActive }" id="navMenu">
+      <div class="navbar-menu" v-bind:class="{ 'is-active': menuActive }" id="navMenu" v-if="$store.state.userEmail !== undefined">
         <div class="navbar-start">
           <router-link class="navbar-item" v-bind:class="{ 'is-active': $route.path === '/' }" to='/'>
             Tasks

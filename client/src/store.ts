@@ -36,7 +36,8 @@ function parseTask(task: {title: string,
 export default new Vuex.Store({
   state: {
     userEmail: undefined,
-    error: {login: ''},
+    error: {login: '', register: ''},
+    success: {login: '', register: ''},
     tasks: new Array(),
   },
   mutations: {
@@ -45,6 +46,15 @@ export default new Vuex.Store({
     },
     setErrorLogin(state, payload) {
       state.error.login = payload;
+    },
+    setErrorRegister(state, payload) {
+      state.error.register = payload;
+    },
+    setSuccessLogin(state, payload) {
+      state.success.login = payload;
+    },
+    setSuccessRegister(state, payload) {
+      state.success.register = payload;
     },
     setTask(state, payload) {
       state.tasks = payload;
@@ -64,6 +74,7 @@ export default new Vuex.Store({
       axios.post('/api/user/login', {username: payload[0], password: payload[1]}).then((res) => {
         if ('email' in res.data) {
           commit('setEmail', res.data.email);
+          commit('setSuccessLogin', 'Successfuly logged in');
         } else {
           commit('setErrorLogin', res.data.error);
         }
@@ -71,9 +82,24 @@ export default new Vuex.Store({
         commit('setErrorLogin', 'Unknown email or password');
       });
     },
+    register({ commit }, payload): any {
+      axios.post('/api/user/register', {email: payload[0], password: payload[1]}).then((res) => {
+        if ('email' in res.data) {
+          commit('setSuccessRegister', 'Successfuly created an account');
+        } else {
+          commit('setErrorRegister', res.data.error);
+        }
+      }).catch((err) => {
+        commit('setErrorRegister', 'Server is offline, please try again later');
+      });
+    },
     logout({ commit }): any {
       commit('setEmail', undefined);
       axios.post('/api/user/logout');
+    },
+    delete({ commit }): any {
+      commit('setEmail', undefined);
+      axios.post('/api/user/delete');
     },
     loadTasks({ commit }): any {
       axios.get('api/task/pending').then((res) => {

@@ -12,14 +12,14 @@ passport.use(new localStrategy(
         'error': err
       });
       else if (!user) callback(null, null, {
-        'error': 'incorrect email or password'
+        'error': 'Incorrect email or password'
       });
       else {
         User.comparePassword(password, user.password, (err, isMatch) => {
           if (err) callback(err);
           else if (isMatch) callback(null, user);
           else callback(null, null, {
-            'error': 'incorrect email or password'
+            'error': 'Incorrect email or password'
           });
         });
       }
@@ -37,9 +37,11 @@ passport.deserializeUser(function(id, done) {
   });
 });
 
-router.post('/create', (req, res) => {
+router.post('/register', (req, res) => {
   User.createUser(req.body.email, req.body.password, (err, result) => {
-    if (err) return res.json({ 'error': "email address aleady used" });
+    if (err) {
+      console.log(err);
+      return res.json({ 'error': "Email address aleady used" });}
     res.json({ "email": req.body.email });
   });
 });

@@ -82,8 +82,9 @@ module.exports.createUser = (email, password, callback) => {
         password: hash,
         email: email
       });
+      console.log(email, password, ">>NewUser:", user);
       user.save(callback);
-    })
+    });
   });
 }
 

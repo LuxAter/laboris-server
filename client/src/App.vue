@@ -4,6 +4,23 @@
   </div>
 </template>
 
+<script lang="ts">
+import { Component, Vue } from 'vue-property-decorator';
+
+@Component
+export default class App extends Vue {
+  constructor() {
+    super();
+    this.axios.get('/api/user/current').then((response) => {
+      if(!('error' in response.data)){
+        this.$store.commit('setEmail', response.data.email);
+        this.$store.dispatch('loadTasks');
+      }
+    });
+  }
+}
+</script>
+
 <style>
 #app {
   font-family: 'Avenir', Helvetica, Arial, sans-serif;
