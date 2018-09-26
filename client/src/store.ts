@@ -29,18 +29,22 @@ function parseTask(task: {title: string,
   };
 }
 
+// interface Obj {
+//   [key: string]: any
+// }
+
 export default new Vuex.Store({
   state: {
     userEmail: undefined,
-    error: undefined,
+    error: {login: ''},
     tasks: new Array(),
   },
   mutations: {
     setEmail(state, payload) {
       state.userEmail = payload;
     },
-    setError(state, payload) {
-      state.error = payload;
+    setErrorLogin(state, payload) {
+      state.error.login = payload;
     },
     setTask(state, payload) {
       state.tasks = payload;
@@ -61,10 +65,10 @@ export default new Vuex.Store({
         if ('email' in res.data) {
           commit('setEmail', res.data.email);
         } else {
-          commit('setError', res.data.error);
+          commit('setErrorLogin', res.data.error);
         }
       }).catch((err) => {
-        commit('setError', 'Unknown email or password');
+        commit('setErrorLogin', 'Unknown email or password');
       });
     },
     logout({ commit }): any {
