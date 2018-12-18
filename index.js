@@ -50,4 +50,6 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, "client/dist/index.html"));
 })
 
-app.listen(3000);
+console.log("Listening on", process.env.PORT || 8000);
+app.listen(process.env.PORT || 8000);
+
