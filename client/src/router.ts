@@ -1,6 +1,7 @@
 import Vue from 'vue';
 import Router from 'vue-router';
 import Home from './views/Home.vue';
+import Create from './views/Create.vue';
 
 Vue.use(Router);
 
@@ -12,14 +13,9 @@ export default new Router({
       component: Home,
     },
     {
-      path: '/reports',
-      name: 'report',
-      component: () => import('./views/Reports.vue'),
-    },
-    {
-      path: '/create',
+      path: '/task/create',
       name: 'create',
-      component: () => import('./views/Create.vue'),
+      component: Create,
     },
   ],
 });

@@ -1,89 +1,64 @@
 var express = require('express');
-var passport = require('passport');
-var crypto = require('crypto');
-var localStrategy = require('passport-local').Strategy;
-var User = require('../../models/user');
 var router = express.Router();
 
-passport.use(new localStrategy(
-  (email, password, callback) => {
-    User.getByEmail(email, (err, user) => {
-      if (err) callback(null, null, {
-        'error': err
-      });
-      else if (!user) callback(null, null, {
-        'error': 'Incorrect email or password'
-      });
-      else {
-        User.comparePassword(password, user.password, (err, isMatch) => {
-          if (err) callback(err);
-          else if (isMatch) callback(null, user);
-          else callback(null, null, {
-            'error': 'Incorrect email or password'
-          });
-        });
-      }
-    });
-  }
-));
+var passport = require('passport');
+var GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
 
-passport.serializeUser(function(user, done) {
-  done(null, user.id);
-});
+var User = require('../../models/user.js');
 
-passport.deserializeUser(function(id, done) {
-  User.findById(id, function(err, user) {
-    done(err, user);
-  });
-});
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: 'http://localhost:8000/api/user/callback'
+}, (accessToken, refreshToken, profile, done) => {
+  return done(null, profile);
+}));
 
-router.post('/register', (req, res) => {
-  User.createUser(req.body.email, req.body.password, (err, result) => {
-    if (err) {
-      console.log(err);
-      return res.json({ 'error': "Email address aleady used" });}
-    res.json({ "email": req.body.email });
-  });
-});
-
-router.post('/delete', (req, res) => {
-  if (!req.user) return res.json({
-    'error': 'must be loggedin'
-  });
-  User.deleteOne({
-    id: req.user.id
-  }, (err) => {
-    if (err) return res.json({
-      'error': err
+passport.serializeUser((user, callback) => {
+  User.findIdOrCreate(user.displayName, (err, uid) => {
+    if (err) callback(err, null);
+    else callback(null, {
+      id: user.id,
+      uid: uid,
+      name: user.displayName
     });
   });
 });
 
-router.post('/login', passport.authenticate('local'), (req, res) => {
-  res.json({
-    "email": req.user.email
+passport.deserializeUser((user, callback) => {
+  callback(null, user);
+})
+
+router.get('/', (req, res) => {
+  console.log('\033[1;34m[router] GET \'/api/user\'\033[0m');
+  if (req.user) return res.json({
+    success: true,
+    user: req.user
+  });
+  return res.json({
+    success: false,
+    error: 'No currently authenticated user'
   });
 });
 
-router.post('/logout', (req, res) => {
-  req.logout();
+router.get('/login', passport.authenticate('google', {
+  scope: ['https://www.googleapis.com/auth/plus.login']
+}));
+router.get('/callback', passport.authenticate('google', {
+  failureRedirect: process.env.FRONTEND + '/'
+}), (req, res) => {
+  res.redirect(process.env.FRONTEND + '/');
+});
+router.get('/logout', (req, res) => {
+  console.log('\033[1;34m[router] GET \'/api/user/logout\'\033[0m');
   req.session = null;
-  res.json({});
-});
-
-router.post('/forgot', (req, res) => {
-  res.json({
-    "error": "Password recovery is still a work in progress"
-  });
-});
-
-router.get('/current', (req, res) => {
   if (req.user) res.json({
-    'email': req.user.email
+    success: true
   });
   else res.json({
-    'error': "No user is logged in"
+    success: false,
+    error: 'No currently authenticated user'
   });
-});
+})
 
 module.exports = router;
