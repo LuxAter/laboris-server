@@ -3,6 +3,7 @@ var mongoose = require('mongoose');
 var Task = require('./task.js');
 
 var userSchema = mongoose.Schema({
+  gid: String,
   name: String,
   pendingTasks: [Task.schema],
   completedTasks: [Task.schema]
@@ -10,13 +11,14 @@ var userSchema = mongoose.Schema({
 
 var User = module.exports = mongoose.model('User', userSchema);
 
-module.exports.findIdOrCreate = (name, callback) => {
+module.exports.findIdOrCreate = (id, name, callback) => {
   User.findOne({
-    name: name
+    gid: id 
   }, (err, user) => {
     if (err) return callback(err, null);
     if (user) return callback(null, user.id);
     const newUser = new User({
+      gid: id,
       name: name
     });
     newUser.save((err, user) => {

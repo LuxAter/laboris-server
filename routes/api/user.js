@@ -15,7 +15,7 @@ passport.use(new GoogleStrategy({
 }));
 
 passport.serializeUser((user, callback) => {
-  User.findIdOrCreate(user.displayName, (err, uid) => {
+  User.findIdOrCreate(user.id, user.displayName, (err, uid) => {
     if (err) callback(err, null);
     else callback(null, {
       id: user.id,

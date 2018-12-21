@@ -102,7 +102,7 @@ export default class Home extends Vue {
       priority: this.priority,
       dueDate: ParseDate(this.dueDate)},
     );
-    // this.$router.push('/');
+    this.$router.push('/');
   }
 }
 </script>

@@ -20,7 +20,7 @@
             <i class="fas fa-home"></i>
           </span>
         </router-link>
-        <router-link class="navbar-item is-hidden-desktop" to="/" v-if="$store.state.userName !== ''">
+        <router-link class="navbar-item is-hidden-desktop" to="/" v-if="$store.state.userName !== ''" v-on:click.native="$store.dispatch('logout')">
           <span class="icon">
             <i class="fas fa-sign-out-alt"></i>
           </span>
