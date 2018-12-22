@@ -182,3 +182,46 @@ export function ParseDate(s: string) {
   }
   return Math.floor(date.getTime() / 1000);
 }
+
+export function DateFmt(fmt: string, timeStamp: number): string {
+  const date: Date = new Date();
+  date.setTime(1000 * timeStamp);
+  const today: Date = new Date();
+  const yyyy: string = date.getFullYear().toString().padStart(4, '0');
+  const mm: string = (date.getMonth() + 1).toString().padStart(2, '0');
+  const dd: string = date.getDate().toString().padStart(2, '0');
+  const HH: string = date.getHours().toString().padStart(2, '0');
+  const MM: string = date.getMinutes().toString().padStart(2, '0');
+  const SS: string = date.getSeconds().toString().padStart(2, '0');
+  let DD: string = '';
+  let diff: number = 0;
+  if (date.getTime() > today.getTime()) {
+    diff = date.getTime() - today.getTime();
+  } else {
+    diff = today.getTime() - date.getTime();
+    DD += '-';
+  }
+  const days: number = Math.floor(diff / (1000 * 3600 * 24));
+  const secs: number = Math.floor(diff / (1000));
+  if (days > 7) {
+    DD += Math.floor(days / 7).toString() + 'w';
+  } else if (days > 0) {
+    DD += days.toString() + 'd';
+  } else if (secs > 3600) {
+    DD += Math.floor(secs / 3600).toString() + 'h';
+  } else if (secs > 60) {
+    DD += Math.floor(secs / 60).toString() + 'm';
+  } else if (secs > 0) {
+    DD += secs.toString() + 's';
+  } else {
+    DD = 'NOW';
+  }
+  fmt = replaceAll(fmt, '%Y', yyyy);
+  fmt = replaceAll(fmt, '%m', mm);
+  fmt = replaceAll(fmt, '%d', dd);
+  fmt = replaceAll(fmt, '%H', HH);
+  fmt = replaceAll(fmt, '%M', MM);
+  fmt = replaceAll(fmt, '%S', SS);
+  fmt = replaceAll(fmt, '%D', DD);
+  return fmt;
+}

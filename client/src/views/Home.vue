@@ -2,6 +2,7 @@
   <div class="home">
     <Header />
     <Login v-if="$store.state.userName === ''" />
+    <TaskList v-else />
   </div>
 </template>
 
@@ -9,11 +10,13 @@
 import { Component, Vue } from 'vue-property-decorator';
 import Header from '@/components/Header.vue';
 import Login from '@/components/Login.vue';
+import TaskList from '@/components/TaskList.vue';
 
 @Component({
   components: {
     Header,
     Login,
+    TaskList,
   },
 })
 export default class Home extends Vue {}

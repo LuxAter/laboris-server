@@ -77,7 +77,7 @@ import Header from '@/components/Header.vue';
     Header,
   },
 })
-export default class Home extends Vue {
+export default class Create extends Vue {
   private title: string = '';
   private projects: string = '';
   private tags: string = '';
@@ -97,8 +97,8 @@ export default class Home extends Vue {
   }
   private submit() {
     this.$store.dispatch('submit', {title: this.title,
-      projects: this.projects.split(','),
-      tags: this.tags.split(','),
+      projects: this.projects !== '' ? this.projects.split(',') : [],
+      tags: this.tags !== '' ? this.tags.split(',') : [],
       priority: this.priority,
       dueDate: ParseDate(this.dueDate)},
     );
