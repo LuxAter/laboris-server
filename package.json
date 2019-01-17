@@ -1,29 +1,24 @@
 {
-  "name": "laboris",
-  "version": "1.0.0",
-  "description": "Laboris task manager server system",
+  "name": "laboris-server",
+  "version": "2.0.0",
   "main": "index.js",
   "repository": "https://github.com/LuxAtrumStudio/laboris-server",
-  "author": "Arden Rasmussen <ardenisthebest@gmail.com>",
   "license": "MIT",
   "scripts": {
     "start": "node index.js",
-    "serve": "nodemon index.js",
-    "dev": "concurrently --kill-others-on-fail \"yarn serve\" \"cd client && yarn serve\"",
-    "build": "cd client && yarn build"
+    "serve": "nodemon index.js"
   },
   "dependencies": {
-    "concurrently": "^4.1.0",
+    "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.3",
     "cookie-session": "^2.0.0-beta.3",
     "cors": "^2.8.5",
     "dotenv": "^6.2.0",
     "express": "^4.16.4",
     "express-form-data": "^2.0.7",
-    "mongoose": "^5.4.0",
+    "mongoose": "^5.4.4",
     "nodemon": "^1.18.9",
     "passport": "^0.4.0",
-    "passport-google-oauth": "^1.0.0",
-    "uuid": "^3.3.2"
+    "passport-local": "^1.0.0"
   }
 }
