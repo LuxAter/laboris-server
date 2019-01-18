@@ -1,23 +1,16 @@
 <template>
   <div class="home">
-    <section class="hero is-fullheight is-secondary is-bold">
-      <div class="hero-body">
-        <div class="container">
-          <h1 class="title">Laboris</h1>
-          <h2 class="subtitle">Task and Time Tracking</h2>
-        </div>
-      </div>
-    </section>
+    <LoginHero />
   </div>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
-import Header from '@/components/Header.vue';
+import LoginHero from '@/components/LoginHero.vue';
 
 @Component({
   components: {
-    Header,
+    LoginHero,
   },
 })
 export default class Home extends Vue {}
