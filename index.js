@@ -29,7 +29,7 @@ app.use(session({
   saveUninitalizes: true
 }));
 app.use(cors({
-  origin: 'localhost:8080',
+  origin: ['10.0.0.21:8080', 'localhost:8080'],
   credentials: true
 }));
 
