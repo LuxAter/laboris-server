@@ -1,6 +1,7 @@
 <template>
   <div class="home">
-    <LoginHero />
+    <LoginHero v-if="$store.state.email === null"/>
+    {{ $store.state.email }}
   </div>
 </template>
 

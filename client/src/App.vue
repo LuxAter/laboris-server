@@ -14,7 +14,12 @@ import Header from '@/components/Header.vue';
     Header,
   },
 })
-export default class App extends Vue {}
+export default class App extends Vue {
+  constructor() {
+    super();
+    this.$store.dispatch('checkCookie');
+  }
+}
 </script>
 <style lang="sass">
   @import '@/assets/main.sass'

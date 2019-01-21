@@ -1,8 +1,7 @@
 <template>
   <div class="home">
-    <div class="container">
-      <div class="card">
-        <div class="card-content">
+    <div class="container" style="padding-top:25px">
+      <div class="box">
           <h1 class="title">Login</h1>
           <div class="is-divider"></div>
           <div class="field">
@@ -30,14 +29,14 @@
             <div class="column is-hidden-mobile"></div>
             <div class="column is-4">
               <router-link class="button is-small is-link is-outlined is-fullwidth" to="/recover">
-                Forgot 
+                Forgot
               </router-link>
             </div>
           </div>
+          <Status v-if="$store.state.responseStatus"/>
           <div class="field">
             <div class="control">
               <button class="button is-success is-fullwidth" :disabled="!(email && password)" v-on:click="handleLogin()">Submit</button>
-            </div>
           </div>
         </div>
       </div>
@@ -47,12 +46,24 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
+import Status from '@/components/Status.vue';
 
-@Component
-export default class Header extends Vue {
+@Component({
+  components: {
+    Status,
+  },
+})
+export default class Login extends Vue {
   private email: string = '';
   private password: string = '';
-  private handleLogin(){
+  private mounted() {
+    this.$store.watch((state) => state.email, () => {
+      if (this.$store.state.email !== null) {
+        this.$router.push('/');
+      }
+    });
+  }
+  private handleLogin() {
     this.$store.dispatch('login', [this.email, this.password]);
   }
 }

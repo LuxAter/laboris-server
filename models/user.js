@@ -57,7 +57,6 @@ module.exports.getUser = (req, callback) => {
       return callback(null, usr);
     });
   }else {
-    console.log(req);
     callback("No user authenticated", null)
   };
 };

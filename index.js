@@ -1,7 +1,7 @@
 const express = require('express');
 require('dotenv').config();
 
-var cookieParser = require('cookie-parser');
+// var cookieParser = require('cookie-parser');
 var formParser = require('express-form-data');
 var session = require('cookie-session');
 
@@ -18,7 +18,7 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({extended:false}));
-app.use(cookieParser());
+// app.use(cookieParser());
 app.use(formParser.format());
 app.use(formParser.stream());
 app.use(formParser.union());
@@ -26,10 +26,10 @@ app.use(session({
   name: 'laboris',
   secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitalizes: true
+  saveUninitialized: true
 }));
 app.use(cors({
-  origin: ['10.0.0.21:8080', 'localhost:8080'],
+  origin: 'http://localhost:8080',
   credentials: true
 }));
 

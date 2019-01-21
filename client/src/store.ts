@@ -4,7 +4,7 @@ import axios from 'axios';
 
 Vue.use(Vuex);
 
-const HOST='http://10.0.0.21:8000';
+const HOST='http://localhost:8000';
 
 export default new Vuex.Store({
   state: {
@@ -20,16 +20,46 @@ export default new Vuex.Store({
     },
   },
   actions: {
+    checkCookie({ commit }): any {
+      axios.get(HOST + '/api/auth', {withCredentials: true}).then((res) => {
+        if (res.data.status === 'success') {
+          commit('setEmail', res.data.user.email);
+          commit('setStatus', null);
+        }
+      });
+    },
     login({ commit }, payload): any {
-      console.log("HI");
       axios.post(HOST + '/api/auth/login',
         {username: payload[0], password: payload[1]}, {withCredentials: true}).then((res) => {
-        console.log(res.data);
-        if (res.data.status === 'success') {
-          commit('setEmail', res.data.email);
-        } else {
-          commit('setStatus', res.data);
-        }
+          if (res.data.status === 'success') {
+            commit('setEmail', res.data.email);
+            commit('setStatus', null);
+          } else {
+            commit('setStatus', res.data);
+          }
+        }).catch((err) => {
+          commit('setStatus', {status: 'error', message: 'Invalid email or password'});
+        });
+    },
+    logout({ commit }): any {
+      axios.get(HOST + '/api/auth/logout', {withCredentials: true});
+      commit('setEmail', null);
+      commit('setStatus', null);
+    },
+    register({ commit }, payload): any {
+      axios.post(HOST + '/api/auth/register',
+        {email: payload[0], password: payload[1]}, {withCredentials: true}).then((res) => {
+          if (res.data.status === 'success') {
+            commit('setEmail', res.data.user.email);
+            commit('setStatus', null);
+          } else {
+            commit('setStatus', res.data);
+          }
+      });
+    },
+    recover({ commit }, payload): any {
+      axios.post(HOST + '/api/auth/recover', {email: payload}, {withCredentials: true}).then((res) => {
+        commit('setStatus', res.data);
       });
     },
   },

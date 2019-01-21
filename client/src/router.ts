@@ -18,6 +18,16 @@ export default new Router({
       name: 'login',
       component: () => import('./views/Login.vue'),
     },
+    {
+      path: '/register',
+      name: 'register',
+      component: () => import('./views/Register.vue'),
+    },
+    {
+      path: '/recover',
+      name: 'recover',
+      component: () => import('./views/Recover.vue'),
+    },
     // {
     //   path: '/about',
     //   name: 'about',
