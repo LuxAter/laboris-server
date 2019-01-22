@@ -91,7 +91,7 @@ import Status from '@/components/Status.vue';
 @Component({
   components: {
     Status,
-  }
+  },
 })
 export default class Login extends Vue {
   private emailLock: boolean = true;

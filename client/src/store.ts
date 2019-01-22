@@ -4,7 +4,7 @@ import axios from 'axios';
 
 Vue.use(Vuex);
 
-const HOST='http://localhost:8000';
+const HOST = 'http://localhost:8000';
 
 export default new Vuex.Store({
   state: {
