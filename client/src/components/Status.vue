@@ -1,5 +1,5 @@
 <template>
-  <article class="message" v-bind:class="{'is-danger': $store.state.responseStatus.status === 'error', 'is-info': $store.state.responseStatus.status === 'info'}">
+  <article class="message" v-bind:class="{'is-danger': $store.state.responseStatus.status === 'error', 'is-info': $store.state.responseStatus.status === 'info', 'is-success': $store.state.responseStatus.status === 'success'}">
     <div class="message-header">
       <p v-if="$store.state.responseStatus.status === 'error'">Error</p>
       <p v-else-if="$store.state.responseStatus.status === 'success'">Success</p>

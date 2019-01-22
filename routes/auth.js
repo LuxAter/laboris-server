@@ -177,7 +177,9 @@ router.post('/recover', (req, res, next) => {
       });
     },
     (token, next) => {
-      User.findOne({email: req.body.email}, (err, user) => {
+      User.findOne({
+        email: req.body.email
+      }, (err, user) => {
         if (user) {
           user.resetToken = token;
           user.resetExpires = Date.now() + 3600000;
@@ -190,8 +192,9 @@ router.post('/recover', (req, res, next) => {
       });
     },
     (token, user, next) => {
-      console.log("Send email!");
-      var smtpTransport = nodemailer.createTransport('SMTP', {service: 'SendGrid',
+      if(!user) return next(null, null);
+      var smtpTransport = nodemailer.createTransport('SMTP', {
+        service: 'SendGrid',
         auth: {
           user: "Nedra1998",
           pass: "Tristan11"
@@ -199,16 +202,14 @@ router.post('/recover', (req, res, next) => {
       });
       var mailOptions = {
         to: user.email,
-        from: 'passwordreset@laboris.com',
+        from: 'noreply@laboris.com',
         subject: 'Laboris Password Reset',
         text: 'You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\n' +
           'Please click on the following link, or paste this into your browser to complete the process:\n\n' +
           'http://' + req.headers.host + '/reset/' + token + '\n\n' +
           'If you did not request this, please ignore this email and your password will remain unchanged.\n'
       };
-      console.log("HI");
       smtpTransport.sendMail(mailOptions, (err) => {
-        console.log(err);
         next(err, null);
       });
     },
@@ -219,6 +220,87 @@ router.post('/recover', (req, res, next) => {
       });
     }
   ])
+});
+
+router.post('/reset', (req, res, next) => {
+  console.log('\033[1;35m[router] POST /api/auth/reset\033[0m');
+  User.findOne({
+    resetToken: req.body.token
+  }, (err, user) => {
+    console.log(user.resetExpires.getTime(), Date.now());
+    if (err) return res.json({
+      status: 'error',
+      message: err
+    });
+    else if (!user) return res.json({
+      status: 'error',
+      message: 'Reset token has already been used'
+    });
+    else if (user.resetExpires < Date.now()) return res.json({
+      status: 'error',
+      message: 'Reset token has expired'
+    });
+    else {
+      user.password = req.body.password;
+      user.resetExpires = 0;
+      user.save((err) => {
+        res.json({
+          status: 'success',
+          message: 'Reset password for \"' + user.email + '\"'
+        });
+      });
+    }
+  });
+});
+
+router.post('/email', (req, res, next) => {
+  console.log('\033[1;35m[router] POST /api/auth/email\033[0m');
+  User.getUser(req, (err, user) => {
+    if (err) return res.json({
+      status: 'error',
+      message: err
+    });
+    if (!user) return res.json({
+      status: 'error',
+      message: 'No user authenticated'
+    });
+    user.email = req.body.email;
+    user.save((err) => {
+      if (err) return res.json({
+        status: 'error',
+        message: err
+      });
+      res.json({
+        status: 'success',
+        message: 'Changed user email to \"' + user.email + '\"'
+      });
+    });
+  });
+});
+
+router.post('/delete', (req, res, next) => {
+  console.log('\033[1;35m[router] POST /api/auth/delete\033[0m');
+  User.getUser(req, (err, user) => {
+    console.log(user, req.user);
+    if (err) return res.json({
+      status: 'error',
+      message: err
+    });
+    if (!user) return res.json({
+      status: 'error',
+      message: 'No user authenticated'
+    });
+    User.DeleteOne({id: user.id}, (err) => {
+      if (err) return res.json({
+        status: 'error',
+        message: err
+      });
+      return res.json({
+        status: 'success',
+        message: 'Deleted user account'
+      });
+    });
+  });
 });
 
 router.post('/user', (req, res, next) => {

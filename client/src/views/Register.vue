@@ -32,7 +32,7 @@
           <div class="columns">
             <div class="column is-4">
               <router-link class="button is-small is-link is-outlined is-fullwidth" to="/login">
-                Login 
+                Login
               </router-link>
             </div>
             <div class="column is-hidden-mobile"></div>
@@ -81,8 +81,7 @@ export default class Register extends Vue {
     const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     return re.test(String(email).toLowerCase());
   }
-  private validatePassword(): void{
-    console.log(this.strength);
+  private validatePassword(): void {
     var strongRegex = new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])(?=.{8,})");
     var mediumRegex = new RegExp("^(((?=.*[a-z])(?=.*[A-Z]))|((?=.*[a-z])(?=.*[0-9]))|((?=.*[A-Z])(?=.*[0-9])))(?=.{6,})");
     if (strongRegex.test(this.password1)) {
@@ -92,7 +91,6 @@ export default class Register extends Vue {
     } else {
       this.strength = 0;
     }
-    console.log(this.strength);
   }
 }
 </script>

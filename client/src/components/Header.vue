@@ -18,18 +18,12 @@
           </span>
           <span>User</span>
         </router-link>
-        <router-link class="navbar-item" to="/settings" v-if="$store.state.email !== null">
-          <span class="icon">
-            <i class="fas fa-cog"></i>
-          </span>
-          <span>Setting</span>
-        </router-link>
-        <a class="navbar-item" v-on:click="$store.dispatch('logout')" v-if="$store.state.email !== null">
+        <router-link class="navbar-item" to="/" v-on:click.native="$store.dispatch('logout')" v-if="$store.state.email !== null">
           <span class="icon">
             <i class="fas fa-sign-out-alt"></i>
           </span>
           <span>Logout</span>
-        </a>
+        </router-link>
         <router-link class="navbar-item" to="/login" v-else>
           <span class="icon">
             <i class="fas fa-sign-in-alt"></i>

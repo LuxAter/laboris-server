@@ -10,6 +10,7 @@ export default new Vuex.Store({
   state: {
     email: null,
     responseStatus: null,
+    darkMode: false,
   },
   mutations: {
     setEmail(state, payload) {
@@ -17,6 +18,9 @@ export default new Vuex.Store({
     },
     setStatus(state, payload) {
       state.responseStatus = payload;
+    },
+    toggleDarkMode(state) {
+      state.darkMode = !state.darkMode;
     },
   },
   actions: {
@@ -59,6 +63,24 @@ export default new Vuex.Store({
     },
     recover({ commit }, payload): any {
       axios.post(HOST + '/api/auth/recover', {email: payload}, {withCredentials: true}).then((res) => {
+        commit('setStatus', res.data);
+      });
+    },
+    resetPassword({ commit }, payload): any {
+      axios.post(HOST + '/api/auth/reset',
+        {token: payload[0], password: payload[1]}, {withCredentials: true}).then((res) => {
+        commit('setStatus', res.data);
+      });
+    },
+    changeEmail({ commit }, payload): any {
+      axios.post(HOST + '/api/auth/email', {email: payload}, {withCredentials: true}).then((res) => {
+        commit('setStatus', res.data);
+        commit('setEmail', payload);
+      });
+    },
+    deleteAccount({ commit, dispatch }): any {
+      axios.post(HOST + '/api/auth/delete', {}, {withCredentials: true}). then((res) => {
+        commit('setEmail', null);
         commit('setStatus', res.data);
       });
     },
