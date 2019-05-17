@@ -38,7 +38,7 @@ db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 var apiRouter = require('./routes/api.js');
 app.use('/api/', apiRouter);
 
-const port = process.env.PORT | 8000;
+const port = process.env.PORT || 8000;
 
 console.log("\033[1;36m[express] Listening on port", port, "\033[0m");
 
