@@ -48,10 +48,10 @@ module.exports.syncEntry = (ent_uuid, entry, callback) => {
         uuid: ent_uuid
       }, entry, (err, db_entry) => {
         if (err) callback(err, null);
-        else callback(null, true);
+        else callback(null, db_entry);
       })
     } else {
-      callback(null, false);
+      callback(null, db_entry);
     }
   });
 }

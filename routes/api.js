@@ -72,13 +72,14 @@ router.post('/', (req, res, next) => {
     entry.status = req.body.status;
     entry.times = JSON.stringify(req.body.times);
     entry.uuid = req.body.uuid;
-    Entry.syncEntry(entry.uuid, entry, (err, success) => {
+    Entry.syncEntry(entry.uuid, entry, (err, db_entry) => {
       if (err) res.json({
         'error': err,
         'success': false
       });
       else res.json({
-        'success': success
+        'success': true,
+        'entry': Entry.serialize(db_entry)
       });
     });
   } else {
