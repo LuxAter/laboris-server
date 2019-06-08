@@ -52,7 +52,9 @@ router.get('/uuid/:uuid', (req, res, next) => {
 
 router.post('/sync', (req, res, next) => {
   Entry.sync(req.body.datetime, (err, entries) => {
-    if(err) res.json({'error': err});
+    if (err) res.json({
+      'error': err
+    });
     else res.json(entries.map(ent => Entry.serialize(ent)));
   })
 });
@@ -98,6 +100,18 @@ router.post('/', (req, res, next) => {
 
 router.post('/update/:uuid', (req, res, next) => {
   Entry.syncEntry(req.params.uuid, req.body, (err, success) => {
+    if (err) res.json({
+      'error': err,
+      'success': false
+    });
+    else res.json({
+      'success': success
+    });
+  });
+});
+
+router.post('/delete/:uuid', (req, res, next) => {
+  Entry.deleteEntry(req.params.uuid, (err, success) => {
     if (err) res.json({
       'error': err,
       'success': false
