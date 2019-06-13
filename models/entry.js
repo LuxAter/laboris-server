@@ -10,7 +10,7 @@ function fmtDate(timestamp) {
 }
 
 var entrySchema = mongoose.Schema({
-  title: String,
+  title: {type: String, required:true},
   projects: [String],
   tags: [String],
   priority: Number,
@@ -64,9 +64,9 @@ module.exports.deleteEntry = (uuid, callback) => {
 
 module.exports.sync = (time, entries, callback) => {
   if (entries){
-    entries.forEach(x => {
+    JSON.parse(entries).forEach((x) => {
       x.times = JSON.stringify(x.times);
-      syncEntry(x.uuid, x, (err, db_entry) => {
+      module.exports.syncEntry(x.uuid, x, (err, db_entry) => {
         if(err) callback(err, null);
       });
     });

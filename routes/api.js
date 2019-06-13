@@ -84,7 +84,7 @@ router.post('/', (req, res, next) => {
         'entry': Entry.serialize(db_entry)
       });
     });
-  } else {
+  } else if (entry.title) {
     Entry.createEntry(entry, (err, db_entry) => {
       if (err) res.json({
         'error': err,
@@ -94,6 +94,11 @@ router.post('/', (req, res, next) => {
         'success': true,
         'entry': Entry.serialize(db_entry)
       });
+    });
+  } else {
+    res.json({
+      'success': false,
+      'error': 'title is required'
     });
   }
 });
