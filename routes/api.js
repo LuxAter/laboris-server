@@ -51,7 +51,7 @@ router.get('/uuid/:uuid', (req, res, next) => {
 });
 
 router.post('/sync', (req, res, next) => {
-  Entry.sync(req.body.datetime, (err, entries) => {
+  Entry.sync(req.body.datetime, req.body.entries, (err, entries) => {
     if (err) res.json({
       'error': err
     });
@@ -99,25 +99,27 @@ router.post('/', (req, res, next) => {
 });
 
 router.post('/update/:uuid', (req, res, next) => {
-  Entry.syncEntry(req.params.uuid, req.body, (err, success) => {
+  Entry.syncEntry(req.params.uuid, req.body, (err, db_entry) => {
     if (err) res.json({
       'error': err,
       'success': false
     });
     else res.json({
-      'success': success
+      'success': true,
+      'entry': Entry.serialize(db_entry)
     });
   });
 });
 
 router.post('/delete/:uuid', (req, res, next) => {
-  Entry.deleteEntry(req.params.uuid, (err, success) => {
+  Entry.deleteEntry(req.params.uuid, (err, response) => {
     if (err) res.json({
       'error': err,
       'success': false
     });
     else res.json({
-      'success': success
+      'success': true,
+      'response': response
     });
   });
 });

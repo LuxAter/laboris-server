@@ -62,7 +62,15 @@ module.exports.deleteEntry = (uuid, callback) => {
   }).remove(callback);
 }
 
-module.exports.sync = (time, callback) => {
+module.exports.sync = (time, entries, callback) => {
+  if (entries){
+    entries.forEach(x => {
+      x.times = JSON.stringify(x.times);
+      syncEntry(x.uuid, x, (err, db_entry) => {
+        if(err) callback(err, null);
+      });
+    });
+  }
   Entry.find({
     modifiedDate: {
       $gt: time
