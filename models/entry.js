@@ -10,7 +10,10 @@ function fmtDate(timestamp) {
 }
 
 var entrySchema = mongoose.Schema({
-  title: {type: String, required:true},
+  title: {
+    type: String,
+    required: true
+  },
   projects: [String],
   tags: [String],
   priority: Number,
@@ -42,7 +45,11 @@ module.exports.syncEntry = (ent_uuid, entry, callback) => {
     uuid: ent_uuid
   }, (err, db_entry) => {
     if (err) callback(err, null);
-    else if (db_entry.modifiedDate < entry.modifiedDate || entry.modifiedDate === undefined) {
+    else if (db_entry == null) {
+      var newEntry = new Entry(entry);
+      newEntry.save();
+      callback(null, newEntry);
+    } else if (db_entry.modifiedDate < entry.modifiedDate || entry.modifiedDate === undefined) {
       entry.modifiedDate = Math.floor(Date.now() / 1000);
       Entry.findOneAndUpdate({
         uuid: ent_uuid
@@ -63,11 +70,11 @@ module.exports.deleteEntry = (uuid, callback) => {
 }
 
 module.exports.sync = (time, entries, callback) => {
-  if (entries){
+  if (entries) {
     JSON.parse(entries).forEach((x) => {
       x.times = JSON.stringify(x.times);
       module.exports.syncEntry(x.uuid, x, (err, db_entry) => {
-        if(err) callback(err, null);
+        if (err) callback(err, null);
       });
     });
   }
