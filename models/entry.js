@@ -63,6 +63,41 @@ module.exports.syncEntry = (ent_uuid, entry, callback) => {
   });
 }
 
+module.exports.syncEntries = (entries, callback) => {
+  var entry = entries[0];
+  entry.times = JSON.stringify(entry.times);
+  Entry.findOne({
+    uuid: entry.uuid
+  }, (err, db_entry) => {
+    console.log("SYNCING ENTRY")
+    console.log(db_entry, entry);
+    if (err) callback(err);
+    else if (db_entry.modifiedDate <= entry.modifiedDate || entry.modifiedDate === undefined) {
+      Entry.findOneAndUpdate({
+        uuid: db_entry.uuid
+      }, entry, (err, db_entry) => {
+        if (err) callback(err);
+        console.log(db_entry);
+        if (entries.length > 1) {
+          console.log("NEXT");
+          entries.shift();
+          module.exports.syncEntries(entries, callback);
+        } else {
+          console.log("DONE");
+          callback(null);
+        }
+      });
+    } else {
+      if (entries.length > 1) {
+        entries.shift();
+        module.exports.syncEntries(entries, callback);
+      } else {
+        callback(null);
+      }
+    }
+  });
+};
+
 module.exports.deleteEntry = (uuid, callback) => {
   Entry.findOne({
     uuid: uuid
@@ -70,19 +105,28 @@ module.exports.deleteEntry = (uuid, callback) => {
 }
 
 module.exports.sync = (time, entries, callback) => {
-  if (entries) {
-    JSON.parse(entries).forEach((x) => {
-      x.times = JSON.stringify(x.times);
-      module.exports.syncEntry(x.uuid, x, (err, db_entry) => {
-        if (err) callback(err, null);
-      });
+  if (entries && JSON.parse(entries).length !== 0) {
+    console.log("SYNCING");
+    module.exports.syncEntries(JSON.parse(entries), (err) => {
+      if (err) {
+        callback(err, null);
+      } else {
+        console.log("POST");
+        Entry.find({
+          modifiedDate: {
+            $gt: time
+          }
+        }, callback);
+      }
     });
+  } else {
+      console.log("POSTB");
+    Entry.find({
+      modifiedDate: {
+        $gt: time
+      }
+    }, callback);
   }
-  Entry.find({
-    modifiedDate: {
-      $gt: time
-    }
-  }, callback);
 }
 
 module.exports.getPending = (callback) => {
