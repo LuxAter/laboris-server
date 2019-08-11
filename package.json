@@ -1,0 +1,26 @@
+{
+  "name": "laboris-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Arden Rasmussen <ardenisthebest@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "start": "node index.js",
+    "serve": "nodemon index.js"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "db.json"
+    ]
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "fuse.js": "^3.4.5",
+    "lodash": "^4.17.15",
+    "lowdb": "^1.0.0",
+    "uuid": "^3.3.2"
+  },
+  "devDependencies": {
+    "nodemon": "^1.19.1"
+  }
+}
