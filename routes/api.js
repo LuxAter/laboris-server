@@ -3,6 +3,8 @@ const uuidv3 = require("uuid/v3");
 const _ = require("lodash");
 const Fuse = require("fuse.js");
 
+const log = require("../logger.js");
+
 var router = express.Router();
 
 const genEntry = body =>
@@ -108,9 +110,45 @@ router.get("/find", (req, res) => {
   }
 });
 
+router.post("/find", (req, res) => {
+  var fuse = new Fuse(
+    req.app.db
+      .get("tasks")
+      .filter(genFilter(req.query))
+      .value(),
+    {
+      shouldSort: true,
+      keys: ["title", "_id", "tags"]
+    }
+  );
+  if (req.query.key) {
+    res.json(
+      _.map(req.body.queries, {
+        query: query,
+        result: _.map(
+          fuse.search(req.query.query),
+          req.query.key === "id" ? "_id" : req.query.key
+        )
+      })
+    );
+  } else {
+    res.json(
+      _.map(req.body.keys, {
+        key: key,
+        value: fuse.search(key)
+      })
+    );
+  }
+});
+
 router.post("/", (req, res) => {
+  log.warning("CALL");
+  console.log(req.body);
   if (_.isNil(req.body.title)) {
-    res.json({ error: "Title must be defined for a new task", body: req.body });
+    res.json({
+      error: "Title must be defined for a new task",
+      body: req.body
+    });
   } else {
     req.app.db
       .get("tasks")
@@ -127,18 +165,18 @@ router.post("/", (req, res) => {
               ? _.castArray(req.body.children)
               : undefined,
             priority: req.body.priority
-              ? _.asInteger(req.body.priority)
+              ? _.toInteger(req.body.priority)
               : undefined,
             status: req.body.status,
             tags: req.body.tags ? _.castArray(req.body.tags) : undefined,
             entryDate: req.body.entryDate
-              ? _.asInteger(req.body.entryDate)
+              ? _.toInteger(req.body.entryDate)
               : undefined,
             dueDate: req.body.dueDate
-              ? _.asInteger(req.body.dueDate)
+              ? _.toInteger(req.body.dueDate)
               : undefined,
             doneDate: req.body.doneDate
-              ? _.asInteger(req.body.doneDate)
+              ? _.toInteger(req.body.doneDate)
               : undefined,
             times: req.body.times ? _.castArray(req.body.times) : undefined
           },
@@ -317,10 +355,27 @@ router.get("/tags", (req, res) => {
       _.flattenDeep(
         req.app.db
           .get("tasks")
+          .filter(genFilter(req.query))
           .map("tags")
           .value()
       )
     )
+  );
+});
+
+router.get("/reference", (req, res) => {
+  res.json(
+    req.app.db
+      .get("tasks")
+      .filter(genFilter(req.query))
+      .map(o => {
+        return {
+          id: o._id,
+          title: o.title,
+          tags: o.tags
+        };
+      })
+      .value()
   );
 });
 
@@ -341,6 +396,65 @@ router.get("/times", (req, res) => {
         .value()
     )
   );
+});
+
+const getTimeReport = (db, task, level = 0) => {
+  var taskTime = _.sumBy(task.times, ev => {
+    if (ev.length === 1) {
+      return _.now() - ev[0];
+    } else {
+      return ev[1] - ev[0];
+    }
+  });
+  if (level < 3) {
+    var subTime = _.map(task.children, uuid => {
+      getTimeReport(
+        db
+          .get("tasks")
+          .find({
+            _id: uuid
+          })
+          .value(),
+        level + 1
+      );
+    });
+  }
+  return {
+    total: taskTime + _.sum(_.flattenDeep(subTime)),
+    task: tastTime,
+    subTotal: _.sum(_.flattenDeep(subTime)),
+    sub: subTime
+  };
+};
+
+router.get("/times/:id", (req, res) => {
+  var task = req.app.db.get("tasks").find({
+    _id: req.params.id
+  });
+  if (task.value() === undefined) {
+    res.json({
+      error: "ID not found",
+      id: req.params.id
+    });
+  } else {
+    res.json(getTimeReport(req.app.db, task.value()));
+  }
+  // res.json(
+  //   _.sum(
+  //     req.app.db
+  //       .get("tasks")
+  //       .map(entry =>
+  //         _.sumBy(entry.times, ev => {
+  //           if (ev.length === 1) {
+  //             return _.now() - ev[0];
+  //           } else {
+  //             return ev[1] - ev[0];
+  //           }
+  //         })
+  //       )
+  //       .value()
+  //   )
+  // );
 });
 
 router.get("/:id", (req, res) => {
@@ -377,13 +491,13 @@ router.post("/:id", (req, res) => {
           ? _.castArray(req.body.children)
           : val.children,
         priority: req.body.priority
-          ? _.asInteger(req.body.priority)
+          ? _.toInteger(req.body.priority)
           : val.priority,
         status: req.body.status ? req.body.status : val.priority,
         tags: req.body.tags ? _.castArray(req.body.tags) : val.tags,
-        dueDate: req.body.dueDate ? _.asInteger(req.body.dueDate) : val.dueDate,
+        dueDate: req.body.dueDate ? _.toInteger(req.body.dueDate) : val.dueDate,
         doneDate: req.body.doneDate
-          ? _.asInteger(req.body.doneDate)
+          ? _.toInteger(req.body.doneDate)
           : val.doneDate,
         modifiedDate: _.now(),
         times: req.body.times ? _.castArray(req.body.times) : val.times
