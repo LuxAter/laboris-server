@@ -98,15 +98,30 @@ router.get("/find", (req, res) => {
       keys: ["title", "_id", "tags"]
     }
   );
-  if (req.query.key) {
-    res.json(
-      _.map(
-        fuse.search(req.query.query),
-        req.query.key === "id" ? "_id" : req.query.key
-      )
-    );
+  if (req.query.query.search(",") !== -1) {
+    if (req.query.key) {
+      res.json(
+        _.map(req.query.query.split(","), query => {
+          _.map(
+            fuse.search(query),
+            req.query.key === "id" ? "_id" : req.query.key
+          );
+        })
+      );
+    } else {
+      res.json(_.map(req.query.query.split(","), query => fuse.search(query)));
+    }
   } else {
-    res.json(fuse.search(req.query.query));
+    if (req.query.key) {
+      res.json(
+        _.map(
+          fuse.search(req.query.query),
+          req.query.key === "id" ? "_id" : req.query.key
+        )
+      );
+    } else {
+      res.json(fuse.search(req.query.query));
+    }
   }
 });
 
@@ -132,72 +147,60 @@ router.post("/find", (req, res) => {
       })
     );
   } else {
-    res.json(
-      _.map(req.body.keys, {
-        key: key,
-        value: fuse.search(key)
-      })
-    );
+    res.json(_.map(req.body.queries, key => fuse.search(key)));
   }
 });
 
 router.post("/", (req, res) => {
-  log.warning("CALL");
-  console.log(req.body);
   if (_.isNil(req.body.title)) {
     res.json({
       error: "Title must be defined for a new task",
       body: req.body
     });
   } else {
+    const body = _.defaults(
+      {
+        _id: req.body.id,
+        hidden: req.body.hidden,
+        title: req.body.title,
+        parents: req.body.parents ? _.castArray(req.body.parents) : undefined,
+        children: req.body.children
+          ? _.castArray(req.body.children)
+          : undefined,
+        priority: req.body.priority
+          ? _.toInteger(req.body.priority)
+          : undefined,
+        status: req.body.status,
+        tags: req.body.tags ? _.castArray(req.body.tags) : undefined,
+        entryDate: req.body.entryDate
+          ? _.toInteger(req.body.entryDate)
+          : undefined,
+        dueDate: req.body.dueDate ? _.toInteger(req.body.dueDate) : undefined,
+        doneDate: req.body.doneDate
+          ? _.toInteger(req.body.doneDate)
+          : undefined,
+        times: req.body.times ? _.castArray(req.body.times) : undefined
+      },
+      {
+        _id: uuidv3(req.body.title + _.now().toString(), uuidv3.URL),
+        hidden: false,
+        parents: [],
+        children: [],
+        priority: 5,
+        status: "active",
+        tags: [],
+        entryDate: _.now(),
+        dueDate: null,
+        doneDate: null,
+        modifiedDate: _.now(),
+        times: []
+      }
+    );
     req.app.db
       .get("tasks")
-      .push(
-        _.defaults(
-          {
-            _id: req.body.id,
-            hidden: req.body.hidden,
-            title: req.body.title,
-            parents: req.body.parents
-              ? _.castArray(req.body.parents)
-              : undefined,
-            children: req.body.children
-              ? _.castArray(req.body.children)
-              : undefined,
-            priority: req.body.priority
-              ? _.toInteger(req.body.priority)
-              : undefined,
-            status: req.body.status,
-            tags: req.body.tags ? _.castArray(req.body.tags) : undefined,
-            entryDate: req.body.entryDate
-              ? _.toInteger(req.body.entryDate)
-              : undefined,
-            dueDate: req.body.dueDate
-              ? _.toInteger(req.body.dueDate)
-              : undefined,
-            doneDate: req.body.doneDate
-              ? _.toInteger(req.body.doneDate)
-              : undefined,
-            times: req.body.times ? _.castArray(req.body.times) : undefined
-          },
-          {
-            _id: uuidv3(req.body.title + _.now().toString(), uuidv3.URL),
-            hidden: false,
-            parents: [],
-            children: [],
-            priority: 5,
-            status: "active",
-            tags: [],
-            entryDate: _.now(),
-            dueDate: null,
-            doneDate: null,
-            modifiedDate: _.now(),
-            times: []
-          }
-        )
-      )
+      .push(body)
       .write()
-      .then(entry => res.json(entry));
+      .then(data => res.json(body));
   }
 });
 
