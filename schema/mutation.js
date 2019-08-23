@@ -13,6 +13,7 @@ module.exports.mutationSchema = `
     stop(id: String!, stopTime: Int): Task
     close(id: String!): Task
     reopen(id: String!): Task
+    delete(id: String!): Boolean!
   }
 `;
 
@@ -95,7 +96,9 @@ module.exports.mutationRoot = {
       .find({ id: args.id })
       .value();
     if (!task) throw new Error("no matching ID");
-    db.get("open").remove({ id: args.id });
+    db.get("open")
+      .remove({ id: args.id })
+      .write();
     return new Task(
       db
         .get("closed")
@@ -109,12 +112,23 @@ module.exports.mutationRoot = {
       .find({ id: args.id })
       .value();
     if (!task) throw new Error("no matching ID");
-    db.get("closed").remove({ id: args.id });
+    db.get("closed")
+      .remove({ id: args.id })
+      .write();
     return new Task(
       db
         .get("open")
         .push(task)
         .write()
     );
+  },
+
+  delete: args => {
+    const task = db.get("open").find({ id: args.id });
+    if (!task.value()) return false;
+    db.get("open")
+      .remove({ id: args.id })
+      .write();
+    return true;
   }
 };
