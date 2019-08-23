@@ -1,6 +1,7 @@
 const _ = require("lodash");
 var { buildSchema } = require("graphql");
 const BigInt = require("graphql-bigint");
+const GraphQLJSON = require("graphql-type-json");
 
 const { scalarsSchema } = require("./scalars.js");
 const { taskSchema, taskClass } = require("./task.js");

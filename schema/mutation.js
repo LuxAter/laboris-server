@@ -33,12 +33,28 @@ module.exports.mutationRoot = {
       times: [],
       hidden: args.hidden || false
     };
-    return new Task(
-      db
-        .get("open")
-        .push(body)
-        .write()
-    );
+    db.get("open")
+      .push(body)
+      .write();
+    body.parents.forEach(id => {
+      const parent = db.get("open").find({ id: id });
+      parent
+        .assign({
+          children: [...parent.value().children, body.id],
+          modifiedDate: body.modifiedDate
+        })
+        .write();
+    });
+    body.children.forEach(id => {
+      const child = db.get("open").find({ id: id });
+      child
+        .assign({
+          parents: [...child.value().parents, body.id],
+          modifiedDate: body.modifiedDate
+        })
+        .write();
+    });
+    return new Task(body);
   },
 
   modifyTask: args => {
