@@ -9,6 +9,7 @@ module.exports.querySchema = `
     open: [Task!]!
     completed: [Task!]!
     find(query: String!): [Task!]
+    get(id: String!): Task!
     filter(id: String, title: String, parents: [String], children: [String], tags: [String], priority: Int, entryBefore: BigInt, entryAfter: BigInt, dueBefore: BigInt, dueAfter: BigInt, modifiedBefore: BigInt, modifiedAfter: BigInt, hidden: Boolean): [Task!]!
   }
 `;
@@ -22,10 +23,16 @@ module.exports.queryRoot = {
   },
 
   find: ({ query }) => {
-    const res = _.flatten(_.map(db.search(query), res => new Task(res)));
-    console.log("GHERE");
-    console.log(res);
-    return res;
+    return _.flatten(_.map(db.search(query), res => new Task(res)));
+  },
+
+  get: args => {
+    const task = db
+      .get("open")
+      .find({ id: args.id })
+      .value();
+    if (!task) throw new Error(`No matching ID for \"${args.id}\"`);
+    return new Task(task);
   },
 
   filter: ({

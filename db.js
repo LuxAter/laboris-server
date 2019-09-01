@@ -11,14 +11,10 @@ db.defaults({ open: [], closed: [] }).write();
 module.exports = db;
 
 module.exports.search = query => {
-  console.log(query);
   var fuse = new Fuse(db.get("open").value(), {
     shouldSort: true,
     threshold: 0.4,
     keys: ["id", "title", "tags"]
   });
-  const res = fuse.search(query);
-  console.log("DONE");
-  console.log(res);
-  return res;
+  return fuse.search(query);
 };

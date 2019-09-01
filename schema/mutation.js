@@ -83,12 +83,12 @@ module.exports.mutationRoot = {
 
   start: args => {
     const task = db.get("open").find({ id: args.id });
-    if (!task.value()) throw new Error("no matching ID");
+    if (!task.value()) throw new Error(`No matching ID for \"${args.id}\"`);
     if (
       task.value().times.length !== 0 &&
       _.last(task.value().times).length === 1
     )
-      throw new Error("task is already active");
+      throw new Error(`Task \"${args.id}\" is already active`);
     return new Task(
       task
         .assign({
@@ -101,12 +101,12 @@ module.exports.mutationRoot = {
 
   stop: args => {
     const task = db.get("open").find({ id: args.id });
-    if (!task.value()) throw new Error("no matching ID");
+    if (!task.value()) throw new Error(`No matching ID for \"${args.id}\"`);
     if (
       task.value().times.length === 0 ||
       _.last(task.value().times).length !== 1
     )
-      throw new Error("task is not active");
+      throw new Error(`Task \"${args.id}\" is not active`);
     return new Task(
       task
         .assign({
@@ -125,7 +125,7 @@ module.exports.mutationRoot = {
       .get("open")
       .find({ id: args.id })
       .value();
-    if (!task) throw new Error("no matching ID");
+    if (!task) throw new Error(`No matching ID for \"${args.id}\"`);
     db.get("open")
       .remove({ id: args.id })
       .write();
@@ -141,7 +141,7 @@ module.exports.mutationRoot = {
       .get("closed")
       .find({ id: args.id })
       .value();
-    if (!task) throw new Error("no matching ID");
+    if (!task) throw new Error(`No matching ID for \"${args.id}\"`);
     db.get("closed")
       .remove({ id: args.id })
       .write();
@@ -158,7 +158,7 @@ module.exports.mutationRoot = {
       .get("open")
       .find({ id: args.id })
       .value();
-    if (!task) throw new Error("no match ID");
+    if (!task) throw new Error(`No matching ID for \"${args.id}\"`);
     db.get("open")
       .remove({ id: args.id })
       .write();
