@@ -7,12 +7,18 @@ const adapter = new FileAsync("db.json", {
   deserialize: data => JSON.parse(data)
 });
 const db = low(adapter);
+db.defaults({ open: [], closed: [] }).write();
 module.exports = db;
 
 module.exports.search = query => {
+  console.log(query);
   var fuse = new Fuse(db.get("open").value(), {
     shouldSort: true,
+    threshold: 0.4,
     keys: ["id", "title", "tags"]
   });
-  return fuse.search(query);
+  const res = fuse.search(query);
+  console.log("DONE");
+  console.log(res);
+  return res;
 };

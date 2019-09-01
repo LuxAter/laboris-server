@@ -6,7 +6,11 @@
   "author": "Arden Rasmussen <ardenisthebest@gmail.com>",
   "license": "MIT",
   "scripts": {
+    "start": "node index.js",
     "serve": "nodemon index.js"
+  },
+  "nodemonConfig": {
+    "ignore": ["db.json"]
   },
   "dependencies": {
     "express": "^4.17.1",

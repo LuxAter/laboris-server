@@ -38,27 +38,31 @@ class Task {
 
   parents() {
     return _.map(
-      this.parentsIds,
-      id =>
-        new Task(
+      _.filter(
+        _.map(this.parentsIds, id =>
           db
             .get("open")
             .find({ id: id })
             .value()
-        )
+        ),
+        o => o !== undefined
+      ),
+      o => new Task(o)
     );
   }
 
   children() {
     return _.map(
-      this.childrenIds,
-      id =>
-        new Task(
+      _.filter(
+        _.map(this.childrenIds, id =>
           db
             .get("open")
             .find({ id: id })
             .value()
-        )
+        ),
+        o => o !== undefined
+      ),
+      o => new Task(o)
     );
   }
 
