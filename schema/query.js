@@ -7,8 +7,8 @@ const { Task } = require("./task.js");
 module.exports.querySchema = `
   type Query {
     open: [Task!]!
-    completed: [Task!]!
-    find(query: String!): [Task!]
+    closed: [Task!]!
+    find(query: String!, open: Boolean): [Task!]
     get(id: String!): Task!
     filter(id: String, title: String, parents: [String], children: [String], tags: [String], priority: Int, entryBefore: BigInt, entryAfter: BigInt, dueBefore: BigInt, dueAfter: BigInt, modifiedBefore: BigInt, modifiedAfter: BigInt, hidden: Boolean): [Task!]!
   }
@@ -16,19 +16,24 @@ module.exports.querySchema = `
 
 module.exports.queryRoot = {
   open: () => {
-    return _.map(db.get("open").value(), el => new Task(el));
+    return _.map(db.open(), el => new Task(el));
   },
-  completed: () => {
-    return _.map(db.get("completed").value(), el => new Task(el));
+  closed: () => {
+    return _.map(db.closed(), el => new Task(el));
   },
 
-  find: ({ query }) => {
-    return _.flatten(_.map(db.search(query), res => new Task(res)));
+  find: ({ query, open }) => {
+    return _.flatten(
+      _.map(
+        db.search(query, open === undefined ? true : open),
+        res => new Task(res)
+      )
+    );
   },
 
   get: args => {
     const task = db
-      .get("open")
+      .open()
       .find({ id: args.id })
       .value();
     if (!task) throw new Error(`No matching ID for \"${args.id}\"`);
@@ -69,7 +74,7 @@ module.exports.queryRoot = {
     );
     return _.map(
       db
-        .get("open")
+        .open()
         .filter(o => {
           if (id && !o.id.startsWith(id)) return false;
           else if (title && o.title !== title) return false;

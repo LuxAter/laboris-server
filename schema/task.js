@@ -34,6 +34,7 @@ class Task {
     this.modifiedDate = body.modifiedDate;
     this.times = body.times;
     this.hidden = body.hidden;
+    this.open = body.open;
   }
 
   parents() {
@@ -41,7 +42,7 @@ class Task {
       _.filter(
         _.map(this.parentsIds, id =>
           db
-            .get("open")
+            .open()
             .find({ id: id })
             .value()
         ),
@@ -56,7 +57,7 @@ class Task {
       _.filter(
         _.map(this.childrenIds, id =>
           db
-            .get("open")
+            .open()
             .find({ id: id })
             .value()
         ),
@@ -77,7 +78,7 @@ class Task {
 
   urg({ weights }) {
     if (!weights) weights = {};
-    if (this.priority === 0) return 0.0;
+    if (this.priority === 0 || this.open === false) return 0.0;
     var urg = 0.0;
     urg += Math.abs(
       parseFloat(weights.age || 0.01429) *

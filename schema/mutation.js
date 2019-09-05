@@ -5,6 +5,12 @@ const uuidv3 = require("uuid/v3");
 const db = require("../db.js");
 const { Task } = require("./task.js");
 
+const getTask = id => {
+  var task = db.open().find({ id: id });
+  if (task.value()) return task;
+  else return db.closed().find({ id: id });
+};
+
 module.exports.mutationSchema = `
   type Mutation {
     newTask(title: String!, parents: [String], children: [String], tags: [String], priority: Int, dueDate: BigInt, hidden: Boolean): Task
@@ -39,7 +45,8 @@ module.exports.mutationRoot = {
       doneDate: null,
       modifiedDate: _.now(),
       times: [],
-      hidden: args.hidden || false
+      hidden: args.hidden || false,
+      open: true
     };
     if (_.some(body.parents, p => p === undefined)) {
       throw new Error("Unrecognized parent task");
@@ -47,7 +54,7 @@ module.exports.mutationRoot = {
       throw new Error("Unrecognized child task");
     }
     body.parents.forEach(id => {
-      const parent = db.get("open").find({ id: id });
+      const parent = db.open().find({ id: id });
       parent
         .assign({
           children: [...parent.value().children, body.id],
@@ -56,7 +63,7 @@ module.exports.mutationRoot = {
         .write();
     });
     body.children.forEach(id => {
-      const child = db.get("open").find({ id: id });
+      const child = db.open().find({ id: id });
       child
         .assign({
           parents: [...child.value().parents, body.id],
@@ -64,17 +71,53 @@ module.exports.mutationRoot = {
         })
         .write();
     });
-    db.get("open")
+    db.open()
       .push(body)
       .write();
     return new Task(body);
   },
 
   modifyTask: args => {
-    // TODO Update parent/children tasks appropriatly.
+    const task = db.open().find({ id: args.id });
+    if (!task.value()) throw new Error(`No matching ID for \"${args.id}\"`);
+    const taskValue = task.value();
+    if (args.parents !== undefined) {
+      taskValue.parents.forEach(id => {
+        var parent = getTask(id);
+        if (parent.value())
+          parent.assign({
+            children: _.filter(parent.value().children, str => str != task.id)
+          });
+      });
+      args.parents.forEach(id => {
+        var prent = getTask(id);
+        if (parent.value())
+          parent.assign({
+            children: [...parent.value().children, task.id],
+            modifiedDate: _.now()
+          });
+      });
+    }
+    if (args.children !== undefined) {
+      taskValue.children.forEach(id => {
+        var child = getTask(id);
+        if (child.value())
+          child.assign({
+            parents: _.filter(child.value().parents, str => str != task.id)
+          });
+      });
+      args.children.forEach(id => {
+        var child = getTask(id);
+        if (child.value())
+          child.assign({
+            parents: [...child.value().parents, task.id],
+            modifiedDate: _.now()
+          });
+      });
+    }
     return new Task(
       db
-        .get("open")
+        .open()
         .find({ id: args.id })
         .assign({ ...args, modifiedDate: _.now() })
         .write()
@@ -82,7 +125,7 @@ module.exports.mutationRoot = {
   },
 
   start: args => {
-    const task = db.get("open").find({ id: args.id });
+    const task = db.open().find({ id: args.id });
     if (!task.value()) throw new Error(`No matching ID for \"${args.id}\"`);
     if (
       task.value().times.length !== 0 &&
@@ -100,7 +143,7 @@ module.exports.mutationRoot = {
   },
 
   stop: args => {
-    const task = db.get("open").find({ id: args.id });
+    const task = db.open().find({ id: args.id });
     if (!task.value()) throw new Error(`No matching ID for \"${args.id}\"`);
     if (
       task.value().times.length === 0 ||
@@ -122,48 +165,56 @@ module.exports.mutationRoot = {
 
   close: args => {
     const task = db
-      .get("open")
+      .open()
       .find({ id: args.id })
       .value();
     if (!task) throw new Error(`No matching ID for \"${args.id}\"`);
-    db.get("open")
+    db.open()
       .remove({ id: args.id })
+      .write();
+    db.closed()
+      .push(task)
       .write();
     return new Task(
       db
-        .get("closed")
-        .push(task)
+        .closed()
+        .find({ id: args.id })
+        .assign({ modifiedDate: _.now(), doneDate: _.now(), open: false })
         .write()
     );
   },
   reopen: args => {
     const task = db
-      .get("closed")
+      .closed()
       .find({ id: args.id })
       .value();
     if (!task) throw new Error(`No matching ID for \"${args.id}\"`);
-    db.get("closed")
+    db.closed()
       .remove({ id: args.id })
+      .write();
+    db.open()
+      .push(task)
       .write();
     return new Task(
       db
-        .get("open")
-        .push(task)
+        .open()
+        .find({ id: args.id })
+        .assign({ modifiedDate: _.now(), doneDate: null, open: true })
         .write()
     );
   },
 
   delete: args => {
     const task = db
-      .get("open")
+      .open()
       .find({ id: args.id })
       .value();
     if (!task) throw new Error(`No matching ID for \"${args.id}\"`);
-    db.get("open")
+    db.open()
       .remove({ id: args.id })
       .write();
     task.parents.forEach(id => {
-      var parent = db.get("open").find({ id: id });
+      var parent = getTask(id);
       if (parent.value()) {
         parent.assign({
           children: _.filter(parent.value().children, str => str != task.id)
@@ -171,7 +222,7 @@ module.exports.mutationRoot = {
       }
     });
     task.children.forEach(id => {
-      var child = db.get("open").find({ id: id });
+      var child = getTask(id);
       if (child.value()) {
         child.assign({
           parents: _.filter(child.value().parents, str => str != task.id)
