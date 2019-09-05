@@ -27,9 +27,11 @@ class Query {
   }
   push(data) {
     this.query = this.query.push(data);
+    return this;
   }
   remove(query) {
     this.query = this.query.remmove(query);
+    return this;
   }
   write() {
     return this.query.write();
