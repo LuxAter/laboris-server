@@ -26,18 +26,10 @@ module.exports.mutationSchema = `
 module.exports.mutationRoot = {
   newTask: args => {
     var body = {
-      id: uuidv3(args.title + _.now().toString(), uuidv3.URL),
+      _id: uuidv3(args.title + _.now().toString(), uuidv3.URL),
       title: args.title,
-      parents: _.map(args.parents, parent => {
-        const res = db.search(parent);
-        if (res.length !== 0) return res[0].id;
-        else return undefined;
-      }),
-      children: _.map(args.children, child => {
-        const res = db.search(child);
-        if (res.length !== 0) return res[0].id;
-        else return undefined;
-      }),
+      parents: args.parents || [],
+      children: args.children || [],
       tags: args.tags || [],
       priority: args.priority || 5,
       entryDate: _.now(),
@@ -45,39 +37,44 @@ module.exports.mutationRoot = {
       doneDate: null,
       modifiedDate: _.now(),
       times: [],
-      hidden: args.hidden || false,
-      open: true
+      hidden: args.hidden || false
     };
-    if (_.some(body.parents, p => p === undefined)) {
-      throw new Error("Unrecognized parent task");
-    } else if (_.some(body.children, c => c === undefined)) {
-      throw new Error("Unrecognized child task");
-    }
-    body.parents.forEach(id => {
-      const parent = db.open().find({ id: id });
-      parent
-        .assign({
-          children: [...parent.value().children, body.id],
-          modifiedDate: body.modifiedDate
-        })
-        .write();
-    });
-    body.children.forEach(id => {
-      const child = db.open().find({ id: id });
-      child
-        .assign({
-          parents: [...child.value().parents, body.id],
-          modifiedDate: body.modifiedDate
-        })
-        .write();
-    });
-    db.open()
-      .push(body)
-      .write();
-    return new Task(body);
+    return db
+      .search(body.parents)
+      .then(res => {
+        if (_.some(res, p => p.length === 0))
+          throw new Error("Unrecognized parent task");
+        body.parents = _.map(res, o => o[0]._id);
+        body.parents.forEach(parentId =>
+          db.open().then(collection => {
+            collection.updateOne(
+              { _id: parentId },
+              { $addToSet: { children: body._id } }
+            );
+          })
+        );
+        return db.search(body.children);
+      })
+      .then(res => {
+        if (_.some(res, p => p.length === 0))
+          throw new Error("Unrecognized child task");
+        body.children = _.map(res, o => o[0]._id);
+        body.children.forEach(childId =>
+          db.open().then(collection => {
+            collection.updateOne(
+              { _id: childId },
+              { $addToSet: { parents: body._id } }
+            );
+          })
+        );
+      })
+      .then(() => db.open())
+      .then(collection => collection.insertOne(body))
+      .then(res => new Task(body));
   },
 
   modifyTask: args => {
+    return db.open().then(collection => collection.findOne({ _id: args.id }));
     const task = db.open().find({ id: args.id });
     if (!task.value()) throw new Error(`No matching ID for \"${args.id}\"`);
     const taskValue = task.value();
@@ -125,21 +122,24 @@ module.exports.mutationRoot = {
   },
 
   start: args => {
-    const task = db.open().find({ id: args.id });
-    if (!task.value()) throw new Error(`No matching ID for \"${args.id}\"`);
-    if (
-      task.value().times.length !== 0 &&
-      _.last(task.value().times).length === 1
-    )
-      throw new Error(`Task \"${args.id}\" is already active`);
-    return new Task(
-      task
-        .assign({
-          modifiedDate: _.now(),
-          times: [...task.value().times, [args.startTime || _.now()]]
-        })
-        .write()
-    );
+    return db
+      .open()
+      .then(collection => collection.findOne({ _id: args.id }))
+      .then(task => {
+        if (task === undefined)
+          throw new Error(`No matching ID for \"${args.id}\"`);
+        if (task.times.length !== 0 && _.last(task.times).length === 1)
+          throw new Error(`Task \"${args.id}\" is already active`);
+        return db.open();
+      })
+      .then(collection =>
+        collection.findOneAndUpdate(
+          { _id: args.id },
+          { $push: { times: [_.now()] } },
+          { returnNewDocument: true }
+        )
+      )
+      .then(res => new Task(res.value));
   },
 
   stop: args => {

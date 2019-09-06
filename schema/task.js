@@ -22,11 +22,11 @@ module.exports.taskSchema = `
 
 class Task {
   constructor(body) {
-    this.id = body.id;
+    this.id = body._id;
     this.title = body.title;
-    this.parentsIds = body.parents;
-    this.childrenIds = body.children;
-    this.tags = body.tags;
+    this.parentsIds = body.parents || [];
+    this.childrenIds = body.children || [];
+    this.tags = body.tags || [];
     this.priority = body.priority;
     this.entryDate = body.entryDate;
     this.dueDate = body.dueDate;
@@ -38,32 +38,24 @@ class Task {
   }
 
   parents() {
-    return _.map(
-      _.filter(
-        _.map(this.parentsIds, id =>
-          db
-            .open()
-            .find({ id: id })
-            .value()
-        ),
-        o => o !== undefined
-      ),
-      o => new Task(o)
+    return db.open().then(collection =>
+      collection
+        .find({ _id: { $in: this.parentsIds } })
+        .toArray()
+        .then(data =>
+          _.map(_.filter(data, o => o !== undefined), o => new Task(o))
+        )
     );
   }
 
   children() {
-    return _.map(
-      _.filter(
-        _.map(this.childrenIds, id =>
-          db
-            .open()
-            .find({ id: id })
-            .value()
-        ),
-        o => o !== undefined
-      ),
-      o => new Task(o)
+    return db.open().then(collection =>
+      collection
+        .find({ _id: { $in: this.childrenIds } })
+        .toArray()
+        .then(data =>
+          _.map(_.filter(data, o => o !== undefined), o => new Task(o))
+        )
     );
   }
 

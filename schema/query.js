@@ -16,28 +16,37 @@ module.exports.querySchema = `
 
 module.exports.queryRoot = {
   open: () => {
-    return _.map(db.open(), el => new Task(el));
+    return db.open().then(collection =>
+      collection
+        .find()
+        .toArray()
+        .then(data => _.map(data, el => new Task(el)))
+    );
   },
   closed: () => {
+    return db.closed().then(collection =>
+      collection
+        .find()
+        .toArray()
+        .then(data => _.map(data, el => new Task(el)))
+    );
     return _.map(db.closed(), el => new Task(el));
   },
 
   find: ({ query, open }) => {
-    return _.flatten(
-      _.map(
-        db.search(query, open === undefined ? true : open),
-        res => new Task(res)
-      )
-    );
+    return db.search(query, open === undefined ? true : open).then(data => {
+      return _.flatten(_.map(data, o => new Task(o)));
+    });
   },
 
   get: args => {
-    const task = db
+    return db
       .open()
-      .find({ id: args.id })
-      .value();
-    if (!task) throw new Error(`No matching ID for \"${args.id}\"`);
-    return new Task(task);
+      .then(collection => collection.findOne({ _id: args.id }))
+      .then(data => {
+        if (data) return new Task(data);
+        throw new Error(`No matching ID for ${args.id}`);
+      });
   },
 
   filter: ({
@@ -56,59 +65,35 @@ module.exports.queryRoot = {
     hidden
   }) => {
     if (hidden === undefined) hidden = false;
-    parents = _.filter(
-      _.map(parents, parent => {
-        const res = db.search(parent);
-        if (res.length !== 0) return res[0].id;
-        else return undefined;
-      }),
-      o => o !== undefined
-    );
-    children = _.filter(
-      _.map(children, child => {
-        const res = db.search(child);
-        if (res.length !== 0) return res[0].id;
-        else return undefined;
-      }),
-      o => o !== undefined
-    );
-    return _.map(
-      db
-        .open()
-        .filter(o => {
-          if (id && !o.id.startsWith(id)) return false;
-          else if (title && o.title !== title) return false;
-          else if (
-            parents &&
-            !_.every(_.map(parents, parent => _.includes(o.parents, parent)))
-          )
-            return false;
-          else if (
-            children &&
-            !_.every(_.map(children, child => _.includes(o.children, parent)))
-          )
-            return false;
-          else if (
-            tags &&
-            !_.every(_.map(tags, tag => _.includes(o.tags, tag)))
-          )
-            return false;
-          else if (priority && o.priority !== priority) return false;
-          else if (entryBefore && o.entryDate > entryBefore) return false;
-          else if (entryAfter && o.entryDate < entryAfter) return false;
-          else if (dueBefore && (!o.dueDate || o.dueDate > dueBefore))
-            return false;
-          else if (dueAfter && (!o.dueDate || o.dueDate < dueAfter))
-            return false;
-          else if (modifiedBefore && o.modifiedDate > modifiedBefore)
-            return false;
-          else if (modifiedAfter && o.modifiedDate < modifiedAfter)
-            return false;
-          else if (hidden !== undefined && o.hidden !== hidden) return false;
-          return true;
-        })
-        .value(),
-      o => new Task(o)
-    );
+    return db
+      .search(parents)
+      .then(res => {
+        parents = _.map(_.filter(res, o => o !== undefined), o => o[0]._id);
+        if (parents.length === 0) parents = undefined;
+        return db.search(children);
+      })
+      .then(res => {
+        children = _.map(_.filter(res, o => o !== undefined), o => o[0]._id);
+        if (children.length === 0) children = undefined;
+      })
+      .then(() => db.open())
+      .then(collection => {
+        var findQuery = {};
+        if (id) findQuery._id = { $regex: new RegExp(`^${id}`, "i") };
+        if (title) findQuery.title = { $regex: new RegExp(`${title}`, "i") };
+        if (parents) findQuery.parents = { $all: parents };
+        if (children) findQuery.children = { $all: children };
+        if (tags) findQuery.tags = { $all: tags };
+        if (priority) findQuery.priority = priority;
+        if (entryBefore) findQuery.entryDate = { $lt: entryBefore };
+        else if (entryAfter) findQuery.entryDate = { $gt: entryAfter };
+        if (modifiedBefore) findQuery.modifiedDate = { $lt: modifiedBefore };
+        else if (modifiedAfter) findQuery.modifiedDate = { $gt: modifiedAfter };
+        if (dueBefore) findQuery.dueDate = { $lt: dueBefore };
+        else if (dueAfter) findQuery.dueDate = { $gt: dueAfter };
+        console.log(findQuery);
+        return collection.find(findQuery).toArray();
+      })
+      .then(data => _.map(data, o => new Task(o)));
   }
 };
