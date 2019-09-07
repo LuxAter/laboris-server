@@ -74,51 +74,69 @@ module.exports.mutationRoot = {
   },
 
   modifyTask: args => {
-    return db.open().then(collection => collection.findOne({ _id: args.id }));
-    const task = db.open().find({ id: args.id });
-    if (!task.value()) throw new Error(`No matching ID for \"${args.id}\"`);
-    const taskValue = task.value();
-    if (args.parents !== undefined) {
-      taskValue.parents.forEach(id => {
-        var parent = getTask(id);
-        if (parent.value())
-          parent.assign({
-            children: _.filter(parent.value().children, str => str != task.id)
-          });
-      });
-      args.parents.forEach(id => {
-        var prent = getTask(id);
-        if (parent.value())
-          parent.assign({
-            children: [...parent.value().children, task.id],
-            modifiedDate: _.now()
-          });
-      });
-    }
-    if (args.children !== undefined) {
-      taskValue.children.forEach(id => {
-        var child = getTask(id);
-        if (child.value())
-          child.assign({
-            parents: _.filter(child.value().parents, str => str != task.id)
-          });
-      });
-      args.children.forEach(id => {
-        var child = getTask(id);
-        if (child.value())
-          child.assign({
-            parents: [...child.value().parents, task.id],
-            modifiedDate: _.now()
-          });
-      });
-    }
-    return new Task(
-      db
-        .open()
-        .find({ id: args.id })
-        .assign({ ...args, modifiedDate: _.now() })
-        .write()
-    );
+    return db
+      .search(args.parents)
+      .then(res => {
+        if (_.som(res, p => p.length === 0))
+          throw new Error("Unrecognized parent task");
+        args.parents = _.map(res, o => o[0]._id);
+        if (args.parents.length === 0) args.parents = undefined;
+        return db.search(args.children);
+      })
+      .then(res => {
+        if (_.som(res, p => p.length === 0))
+          throw new Error("Unrecognized child task");
+        args.children = _.map(res, o => o[0]._id);
+        if (args.children.length === 0) args.children = undefined;
+        return db.open();
+      })
+      .then(collection => collection.findOne({ _id: args.id }))
+      .then(task => {
+        if (args.parents !== undefined) {
+          task.parents.forEach(parentId =>
+            db.open().then(collection => {
+              collection.updateOne(
+                { _id: parentId },
+                { $pull: { children: task._id } }
+              );
+            })
+          );
+          args.parents.forEach(parentId =>
+            db.open().then(collection => {
+              collection.updateOne(
+                { _id: parentId },
+                { $addToSet: { children: task._id } }
+              );
+            })
+          );
+        }
+        if (args.children !== undefined) {
+          task.children.forEach(childId =>
+            db.open().then(collection => {
+              collection.updateOne(
+                { _id: childId },
+                { $pull: { parents: task._id } }
+              );
+            })
+          );
+          args.children.forEach(childId =>
+            db.open().then(collection => {
+              collection.updateOne(
+                { _id: childId },
+                { $addToSet: { parents: task._id } }
+              );
+            })
+          );
+        }
+        return db.open();
+      })
+      .then(collection =>
+        collection.findOneAndUpdate(
+          { _id: args.id },
+          { $set: { ...args, modifiedDate: _.now() } }
+        )
+      )
+      .then(res => new Task(res.value));
   },
 
   start: args => {
@@ -126,7 +144,7 @@ module.exports.mutationRoot = {
       .open()
       .then(collection => collection.findOne({ _id: args.id }))
       .then(task => {
-        if (task === undefined)
+        if (task === undefined || task === null)
           throw new Error(`No matching ID for \"${args.id}\"`);
         if (task.times.length !== 0 && _.last(task.times).length === 1)
           throw new Error(`Task \"${args.id}\" is already active`);
@@ -135,7 +153,10 @@ module.exports.mutationRoot = {
       .then(collection =>
         collection.findOneAndUpdate(
           { _id: args.id },
-          { $push: { times: [_.now()] } },
+          {
+            $set: { modifiedDate: _.now() },
+            $push: { times: [args.startTime || _.now()] }
+          },
           { returnNewDocument: true }
         )
       )
@@ -143,92 +164,93 @@ module.exports.mutationRoot = {
   },
 
   stop: args => {
-    const task = db.open().find({ id: args.id });
-    if (!task.value()) throw new Error(`No matching ID for \"${args.id}\"`);
-    if (
-      task.value().times.length === 0 ||
-      _.last(task.value().times).length !== 1
-    )
-      throw new Error(`Task \"${args.id}\" is not active`);
-    return new Task(
-      task
-        .assign({
-          modifiedDate: _.now(),
-          times: [
-            ..._.dropRight(task.value().times),
-            [_.last(task.value().times)[0], args.stopTime || _.now()]
-          ]
-        })
-        .write()
-    );
+    var timeId = "";
+    return db
+      .open()
+      .then(collection => collection.findOne({ _id: args.id }))
+      .then(task => {
+        if (task === undefined)
+          throw new Error(`No matching ID for \"${args.id}\"`);
+        if (task.times.length === 0 || _.last(task.times).length !== 1)
+          throw new Error(`Task \"${args.id}\" is not active`);
+        timeId = `times.${task.times.length - 1}`;
+        return db.open();
+      })
+      .then(collection => {
+        var updateData = { $set: { modifiedDate: _.now() }, $push: {} };
+        updateData.$push[timeId] = args.stopTime || _.now();
+        return collection.findOneAndUpdate({ _id: args.id }, updateData, {
+          returnOriginal: false
+        });
+      })
+      .then(res => new Task(res.value));
   },
 
   close: args => {
-    const task = db
+    var task = undefined;
+    return db
       .open()
-      .find({ id: args.id })
-      .value();
-    if (!task) throw new Error(`No matching ID for \"${args.id}\"`);
-    db.open()
-      .remove({ id: args.id })
-      .write();
-    db.closed()
-      .push(task)
-      .write();
-    return new Task(
-      db
-        .closed()
-        .find({ id: args.id })
-        .assign({ modifiedDate: _.now(), doneDate: _.now(), open: false })
-        .write()
-    );
+      .then(collection =>
+        collection.findOneAndUpdate(
+          { _id: args.id },
+          { $set: { modifiedDate: _.now(), doneDate: _.now() } },
+          { returnOriginal: false }
+        )
+      )
+      .then(res => {
+        task = res.value;
+        return db.closed();
+      })
+      .then(collection => collection.insertOne(task))
+      .then(res => db.open())
+      .then(collection => collection.deleteOne({ _id: args.id }))
+      .then(res => new Task(task));
   },
   reopen: args => {
-    const task = db
+    var task = undefined;
+    return db
       .closed()
-      .find({ id: args.id })
-      .value();
-    if (!task) throw new Error(`No matching ID for \"${args.id}\"`);
-    db.closed()
-      .remove({ id: args.id })
-      .write();
-    db.open()
-      .push(task)
-      .write();
-    return new Task(
-      db
-        .open()
-        .find({ id: args.id })
-        .assign({ modifiedDate: _.now(), doneDate: null, open: true })
-        .write()
-    );
+      .then(collection =>
+        collection.findOneAndUpdate(
+          { _id: args.id },
+          { $set: { modifiedDate: _.now(), doneDate: null } },
+          { returnOriginal: false }
+        )
+      )
+      .then(res => {
+        task = res.value;
+        return db.open();
+      })
+      .then(collection => collection.insertOne(task))
+      .then(res => db.closed())
+      .then(collection => collection.deleteOne({ _id: args.id }))
+      .then(res => new Task(task));
   },
 
   delete: args => {
-    const task = db
+    return db
       .open()
-      .find({ id: args.id })
-      .value();
-    if (!task) throw new Error(`No matching ID for \"${args.id}\"`);
-    db.open()
-      .remove({ id: args.id })
-      .write();
-    task.parents.forEach(id => {
-      var parent = getTask(id);
-      if (parent.value()) {
-        parent.assign({
-          children: _.filter(parent.value().children, str => str != task.id)
-        });
-      }
-    });
-    task.children.forEach(id => {
-      var child = getTask(id);
-      if (child.value()) {
-        child.assign({
-          parents: _.filter(child.value().parents, str => str != task.id)
-        });
-      }
-    });
-    return args.id;
+      .then(collection => collection.findOne({ _id: args.id }))
+      .then(task => {
+        task.parents.forEach(parentId =>
+          db.open().then(collection => {
+            collection.updateOne(
+              { _id: parentId },
+              { $pull: { children: task._id } }
+            );
+          })
+        );
+        task.children.forEach(childId =>
+          db.open().then(collection => {
+            collection.updateOne(
+              { _id: childId },
+              { $pull: { parents: task._id } }
+            );
+          })
+        );
+        return db.open();
+      })
+      .then(collection => collection.deleteOne({ _id: args.id }))
+      .then(res => args.id);
   }
 };

@@ -34,7 +34,7 @@ module.exports.search = (query, open) => {
       var fuse = new Fuse(data, {
         shouldSort: true,
         threshold: 0.4,
-        keys: ["id", "title", "tags"]
+        keys: ["_id", "title", "tags"]
       });
       if (Array.isArray(query)) return _.map(query, q => fuse.search(q));
       return fuse.search(query);

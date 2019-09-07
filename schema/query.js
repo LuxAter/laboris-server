@@ -91,7 +91,7 @@ module.exports.queryRoot = {
         else if (modifiedAfter) findQuery.modifiedDate = { $gt: modifiedAfter };
         if (dueBefore) findQuery.dueDate = { $lt: dueBefore };
         else if (dueAfter) findQuery.dueDate = { $gt: dueAfter };
-        console.log(findQuery);
+        findQuery.hidden = hidden ? hidden : false;
         return collection.find(findQuery).toArray();
       })
       .then(data => _.map(data, o => new Task(o)));
