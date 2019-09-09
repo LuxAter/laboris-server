@@ -77,14 +77,14 @@ module.exports.mutationRoot = {
     return db
       .search(args.parents)
       .then(res => {
-        if (_.som(res, p => p.length === 0))
+        if (_.some(res, p => p.length === 0))
           throw new Error("Unrecognized parent task");
         args.parents = _.map(res, o => o[0]._id);
         if (args.parents.length === 0) args.parents = undefined;
         return db.search(args.children);
       })
       .then(res => {
-        if (_.som(res, p => p.length === 0))
+        if (_.some(res, p => p.length === 0))
           throw new Error("Unrecognized child task");
         args.children = _.map(res, o => o[0]._id);
         if (args.children.length === 0) args.children = undefined;
