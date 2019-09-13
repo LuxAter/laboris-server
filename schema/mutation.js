@@ -74,6 +74,7 @@ module.exports.mutationRoot = {
   },
 
   modifyTask: args => {
+    var oldParents, oldChildren;
     return db
       .search(args.parents)
       .then(res => {
@@ -110,6 +111,7 @@ module.exports.mutationRoot = {
             })
           );
         }
+        oldParents = task.parents;
         if (args.children !== undefined) {
           task.children.forEach(childId =>
             db.open().then(collection => {
@@ -128,14 +130,18 @@ module.exports.mutationRoot = {
             })
           );
         }
+        oldChildren = task.children;
         return db.open();
       })
-      .then(collection =>
-        collection.findOneAndUpdate(
+      .then(collection => {
+        if (!"parents" in args) args.parents = oldParents;
+        if (!"children" in args) args.children = oldChildren;
+        return collection.findOneAndUpdate(
           { _id: args.id },
-          { $set: { ...args, modifiedDate: _.now() } }
-        )
-      )
+          { $set: { ...args, modifiedDate: _.now() } },
+          { returnNewDocument: true }
+        );
+      })
       .then(res => new Task(res.value));
   },
 
