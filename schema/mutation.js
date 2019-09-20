@@ -93,6 +93,7 @@ module.exports.mutationRoot = {
       })
       .then(collection => collection.findOne({ _id: args.id }))
       .then(task => {
+        console.log(args);
         if (args.parents !== undefined) {
           task.parents.forEach(parentId =>
             db.open().then(collection => {
@@ -134,8 +135,10 @@ module.exports.mutationRoot = {
         return db.open();
       })
       .then(collection => {
-        if (!"parents" in args) args.parents = oldParents;
-        if (!"children" in args) args.children = oldChildren;
+        console.log(args);
+        if (args.parents === undefined) delete args.parents;
+        if (args.children === undefined) delete args.children;
+        console.log(args);
         return collection.findOneAndUpdate(
           { _id: args.id },
           { $set: { ...args, modifiedDate: _.now() } },
