@@ -26,8 +26,23 @@ module.exports.findById = id => {
     });
 };
 
-module.exports.search = (query, open) => {
+module.exports.search = query => {
   return this.open()
+    .then(collection => collection.find().toArray())
+    .then(data => {
+      if (query === undefined) return undefined;
+      var fuse = new Fuse(data, {
+        shouldSort: true,
+        threshold: 0.4,
+        keys: ["_id", "title", "tags"]
+      });
+      if (Array.isArray(query)) return _.map(query, q => fuse.search(q));
+      return fuse.search(query);
+    });
+};
+
+module.exports.searchClosed = query => {
+  return this.closed()
     .then(collection => collection.find().toArray())
     .then(data => {
       if (query === undefined) return undefined;

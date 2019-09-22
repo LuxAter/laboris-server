@@ -70,7 +70,7 @@ class Task {
 
   urg({ weights }) {
     if (!weights) weights = {};
-    if (this.priority === 0 || this.open === false) return 0.0;
+    if (this.priority === 0 || this.doneDate !== null) return 0.0;
     var urg = 0.0;
     urg += Math.abs(
       parseFloat(weights.age || 0.01429) *
