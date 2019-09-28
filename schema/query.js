@@ -35,7 +35,7 @@ module.exports.queryRoot = {
   },
 
   find: ({ query, open }) => {
-    return db.search(query, open === undefined ? true : open).then(data => {
+    return db.search(query, open).then(data => {
       return _.flatten(_.map(data, o => new Task(o)));
     });
   },
@@ -43,6 +43,11 @@ module.exports.queryRoot = {
   get: args => {
     return db
       .open()
+      .then(collection => collection.findOne({ _id: args.id }))
+      .then(data => {
+        if (data) return new Task(data);
+        return db.closed();
+      })
       .then(collection => collection.findOne({ _id: args.id }))
       .then(data => {
         if (data) return new Task(data);

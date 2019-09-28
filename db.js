@@ -19,10 +19,18 @@ module.exports.closed = () => {
 
 module.exports.findById = id => {
   return this.open()
-    .then(collection => collection.findOne({ _id: id }))
+    .then(collection =>
+      collection.findOne({
+        _id: id
+      })
+    )
     .then(data => {
       if (data.length !== 0) return data;
-      return this.closed().then(collection => collection.findOne({ _id: id }));
+      return this.closed().then(collection =>
+        collection.findOne({
+          _id: id
+        })
+      );
     });
 };
 
@@ -30,14 +38,19 @@ module.exports.search = query => {
   return this.open()
     .then(collection => collection.find().toArray())
     .then(data => {
-      if (query === undefined) return undefined;
-      var fuse = new Fuse(data, {
-        shouldSort: true,
-        threshold: 0.4,
-        keys: ["_id", "title", "tags"]
-      });
-      if (Array.isArray(query)) return _.map(query, q => fuse.search(q));
-      return fuse.search(query);
+      return this.closed()
+        .then(collection => collection.find().toArray())
+        .then(closedData => {
+          data.concat(closedData);
+          if (query === undefined) return undefined;
+          var fuse = new Fuse(data, {
+            shouldSort: true,
+            threshold: 0.4,
+            keys: ["_id", "title", "tags"]
+          });
+          if (Array.isArray(query)) return _.map(query, q => fuse.search(q));
+          return fuse.search(query);
+        });
     });
 };
 
