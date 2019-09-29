@@ -38,10 +38,13 @@ module.exports.search = query => {
   return this.open()
     .then(collection => collection.find().toArray())
     .then(data => {
+      console.log(data);
       return this.closed()
         .then(collection => collection.find().toArray())
         .then(closedData => {
-          data.concat(closedData);
+          console.log(closedData);
+          data = data.concat(closedData);
+          console.log(data);
           if (query === undefined) return undefined;
           var fuse = new Fuse(data, {
             shouldSort: true,

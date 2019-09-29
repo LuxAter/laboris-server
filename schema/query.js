@@ -36,7 +36,8 @@ module.exports.queryRoot = {
 
   find: ({ query, open }) => {
     return db.search(query, open).then(data => {
-      return _.flatten(_.map(data, o => new Task(o)));
+      data = _.flatten(_.map(data, o => new Task(o)));
+      return data;
     });
   },
 
@@ -48,9 +49,13 @@ module.exports.queryRoot = {
         if (data) return new Task(data);
         return db.closed();
       })
-      .then(collection => collection.findOne({ _id: args.id }))
+      .then(collection => {
+        if ("id" in collection) return collection;
+        return collection.findOne({ _id: args.id });
+      })
       .then(data => {
-        if (data) return new Task(data);
+        if ("id" in data) return data;
+        else if (data) return new Task(data);
         throw new Error(`No matching ID for ${args.id}`);
       });
   },

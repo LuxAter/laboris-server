@@ -53,8 +53,9 @@ class Task {
       collection
         .find({ _id: { $in: this.childrenIds } })
         .toArray()
-        .then(data =>
-          _.map(_.filter(data, o => o !== undefined), o => new Task(o))
+        .then(
+          data => _.map(_.filter(data, o => o !== undefined), o => new Task(o)),
+          db.closed()
         )
     );
   }
