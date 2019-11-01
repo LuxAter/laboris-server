@@ -1,8 +1,10 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const uuidv5 = require("uuid/v5");
+const serviceAccount = require('./laboris-dc537-firebase-adminsdk-jecpz-9c6f7b8246.json');
 
-admin.initializeApp(functions.config().firebase);
+// admin.initializeApp(functions.config().firebase);
+admin.initializeApp({credential: admin.credential.cert(serviceAccount), databaseURL: "https://laboris-dc537.firebaseio.com"});
 
 let db = admin.firestore();
 let users = db.collection("users");
@@ -20,6 +22,7 @@ exports.users = functions.https.onRequest((req, res) => {
   });
 });
 exports.user = functions.https.onRequest((req, res) => {
+  console.log(req.path);
   let email = req.body.email || req.query.email || "";
   if (
     email.length === 0 ||
