@@ -1,48 +1,17 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const uuidv5 = require("uuid/v5");
-const serviceAccount = require('./laboris-dc537-firebase-adminsdk-jecpz-9c6f7b8246.json');
+const serviceAccount = require("./laboris-dc537-firebase-adminsdk-jecpz-9c6f7b8246.json");
 
-// admin.initializeApp(functions.config().firebase);
-admin.initializeApp({credential: admin.credential.cert(serviceAccount), databaseURL: "https://laboris-dc537.firebaseio.com"});
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://laboris-dc537.firebaseio.com"
+});
 
 let db = admin.firestore();
 let users = db.collection("users");
-let tasks = db.collection("tasks");
 
-exports.users = functions.https.onRequest((req, res) => {
-  if (req.method !== "GET")
-    return res.status(400).send("POST not supported for this endpoint");
-  return users.get().then(snapshot => {
-    let users = {};
-    snapshot.forEach(doc => {
-      users[doc.id] = doc.data();
-    });
-    return res.json(users);
-  });
-});
-exports.user = functions.https.onRequest((req, res) => {
-  console.log(req.path);
-  let email = req.body.email || req.query.email || "";
-  if (
-    email.length === 0 ||
-    !email.match(/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/)
-  )
-    return res.json({ error: "invalid email format" });
-  return users
-    .doc(uuidv5(email, uuidv5.URL))
-    .get()
-    .then(doc => {
-      if (!doc.data()) return res.json({ error: "user does not exist" });
-      return res.json({ uuid: doc.id, email: email });
-    })
-    .catch(_ => {
-      return res.json({ error: "user does not exist" });
-    });
-});
-exports.createUser = functions.https.onRequest((req, res) => {
-  if (req.method !== "POST")
-    return res.status(400).send("GET not supported for this endpoint");
+createUser = functions.https.onRequest((req, res) => {
   let email = req.body.email || "";
   let firstName = req.body.firstName || "";
   let lastName = req.body.lastName || "";
@@ -68,9 +37,7 @@ exports.createUser = functions.https.onRequest((req, res) => {
       return res.json({ error: err });
     });
 });
-exports.deleteUser = functions.https.onRequest((req, res) => {
-  if (req.method !== "POST")
-    return res.status(400).send("GET not supported for this endpoint");
+deleteUser = functions.https.onRequest((req, res) => {
   let email = req.body.email || req.query.email;
   if (
     email.length === 0 ||
@@ -88,4 +55,53 @@ exports.deleteUser = functions.https.onRequest((req, res) => {
       });
       return res.json({ msg: "deleted user" });
     });
+});
+
+queryUser = functions.https.onRequest((req, res) => {
+  let email = req.body.email || req.query.email || "";
+  if (
+    email.length === 0 ||
+    !email.match(/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/)
+  )
+    return res.json({ error: "invalid email format" });
+  return users
+    .doc(uuidv5(email, uuidv5.URL))
+    .get()
+    .then(doc => {
+      if (!doc.data()) return res.json({ error: "user does not exist" });
+      return res.json({ uuid: doc.id, email: email });
+    })
+    .catch(_ => {
+      return res.json({ error: "user does not exist" });
+    });
+});
+listUsers = functions.https.onRequest((req, res) => {
+  return users.get().then(snapshot => {
+    let users = {};
+    snapshot.forEach(doc => {
+      users[doc.id] = doc.data();
+    });
+    return res.json(users);
+  });
+});
+
+exports.user = functions.https.onRequest((req, res) => {
+  console.log(req.path);
+  const targets = [
+    [/\/create\/?.*/, ["POST"], createUser],
+    [/\/delete\/?.*/, ["POST"], deleteUser],
+    [/\/list\/?.*/, ["GET"], listUsers],
+    [/\//, ["POST", "GET"], queryUser]
+  ];
+  for (const i in targets) {
+    if (req.path.match(targets[i][0]) && targets[i][1].includes(req.method))
+      return targets[i][2](req, res);
+    else if (req.path.match(targets[i][0]))
+      return res.json({
+        error: `endpoint ${targets[i][0].toString()} expects ${JSON.stringify(
+          targets[i][1]
+        )} not ${req.method}`
+      });
+  }
+  return res.json({ error: `endpoint not found for ${req.path}` });
 });
