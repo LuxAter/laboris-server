@@ -126,154 +126,7 @@ exports.user = functions.https.onRequest((req, res) => {
   return res.json({ error: `endpoint not found for ${req.path}` });
 });
 
-dbConstructQuery = (uuid, filter) => {
-  let dbQuery = tasks.where("users", "array-contains", uuid);
-  if (filter.state) dbQuery = dbQuery.where("state", "==", filter.state);
-  if (filter.priority)
-    dbQuery = dbQuery.where("priority", "==", filter.priority);
-  if (filter.priority_gt)
-    dbQuery = dbQuery.where("priority", ">", filter.priority_gt);
-  if (filter.priority_lt)
-    dbQuery = dbQuery.where("priority", "<", filter.priority_lt);
-  if (filter.priority_ge)
-    dbQuery = dbQuery.where("priority", ">=", filter.priority_ge);
-  if (filter.priority_le)
-    dbQuery = dbQuery.where("priority", "<=", filter.priority_le);
-  if (filter.hidden) dbQuery = dbQuery.where("hidden", "==", filter.hidden);
-  if (filter.entryDate)
-    dbQuery = dbQuery.where("entryDate", "==", filter.entryDate);
-  if (filter.entrydate_gt)
-    dbQuery = dbQuery.where("entryDate", ">", filter.entryDate_gt);
-  if (filter.entryDate_lt)
-    dbQuery = dbQuery.where("entryDate", "<", filter.entryDate_lt);
-  if (filter.entryDate_ge)
-    dbQuery = dbQuery.where("entryDate", ">=", filter.entryDate_ge);
-  if (filter.entryDate_le)
-    dbQuery = dbQuery.where("entryDate", "<=", filter.entryDate_le);
-  if (filter.dueDate) dbQuery = dbQuery.where("dueDate", "==", filter.dueDate);
-  if (filter.dueDate_gt)
-    dbQuery = dbQuery.where("dueDate", ">", filter.dueDate_gt);
-  if (filter.dueDate_lt)
-    dbQuery = dbQuery.where("dueDate", "<", filter.dueDate_lt);
-  if (filter.dueDate_ge)
-    dbQuery = dbQuery.where("dueDate", ">=", filter.dueDate_ge);
-  if (filter.dueDate_le)
-    dbQuery = dbQuery.where("dueDate", "<=", filter.dueDate_le);
-  if (filter.doneDate)
-    dbQuery = dbQuery.where("doneDate", "==", filter.doneDate);
-  if (filter.doneDate_gt)
-    dbQuery = dbQuery.where("doneDate", ">", filter.doneDate_gt);
-  if (filter.doneDate_lt)
-    dbQuery = dbQuery.where("doneDate", "<", filter.doneDate_lt);
-  if (filter.doneDate_ge)
-    dbQuery = dbQuery.where("doneDate", ">=", filter.doneDate_ge);
-  if (filter.doneDate_le)
-    dbQuery = dbQuery.where("doneDate", "<=", filter.doneDate_le);
-  if (filter.modifiedDate)
-    dbQuery = dbQuery.where("modifiedDate", "==", filter.modifiedDate);
-  if (filter.modifiedDate_gt)
-    dbQuery = dbQuery.where("modifiedDate", ">", filter.modifiedDate_gt);
-  if (filter.modifiedDate_lt)
-    dbQuery = dbQuery.where("modifiedDate", "<", filter.modifiedDate_lt);
-  if (filter.modifiedDate_ge)
-    dbQuery = dbQuery.where("modifiedDate", ">=", filter.modifiedDate_ge);
-  if (filter.modifiedDate_le)
-    dbQuery = dbQuery.where("modifiedDate", "<=", filter.modifiedDate_le);
-  return dbQuery.get().then(snapshot => {
-    let data = [];
-    snapshot.forEach(doc => {
-      if (
-        (filter.parents
-          ? _.difference(filter.parents, doc.data().parents).length === 0
-          : true) &&
-        (filter.children
-          ? _.difference(filter.children, doc.data().children).length === 0
-          : true) &&
-        (filter.tags
-          ? _.difference(filter.tags, doc.data().tags).length === 0
-          : true)
-      )
-        data.push(_.set(doc.data(), "uuid", doc.id));
-    });
-    return data;
-  });
-};
-
-dbQuery = (query, uuid, filter) => {
-  if (query.length === 0)
-    return new Promise((resolve, reject) => {
-      resolve({});
-    });
-  return dbConstructQuery(uuid, filter).then(data => {
-    var fuse = new Fuse(data, {
-      shouldSort: true,
-      threshold: 0.3,
-      location: 0,
-      distance: 256,
-      maxPatternLength: 32,
-      keys: ["id", "title", "parents", "children", "tags", "users"]
-    });
-    let results = {};
-    if (_.isArray(query)) {
-      query.forEach(queryStr => {
-        results[queryStr] = fuse.search(queryStr);
-      });
-    } else {
-      results = fuse.search(query);
-    }
-    return results;
-  });
-};
-
-createTask = (req, res) => {
-  let task = {
-    title: req.body.title || "",
-    parents: _.compact(_.castArray(req.body.parents)),
-    children: _.compact(_.castArray(req.body.children)),
-    users: _.concat(_.compact(_.castArray(req.body.users)), req.query.token),
-    tags: _.compact(_.castArray(req.body.tags)),
-    priority: _.toInteger(req.body.priority || 5),
-    hidden: req.body.hidden || false,
-    entryDate: _.now(),
-    modifiedDate: _.now(),
-    dueDate: req.body.dueDate ? _.toInteger(req.body.dueDate) : null,
-    doneDate: null,
-    state: true,
-    times: []
-  };
-  if (task.title.length === 0)
-    return res.json({ error: "task title is required to create a task" });
-  return dbQuery(
-    _.uniq(_.concat(task.parents, task.children)),
-    req.query.token,
-    {}
-  ).then(queryResults => {
-    let uuid = uuidv5(
-      task.title + req.query.token + task.entryDate.toString(),
-      uuidv5.URL
-    );
-    try {
-      task.parents = _.map(task.parents, key => queryResults[key][0].uuid);
-      task.children = _.map(task.children, key => queryResults[key][0].uuid);
-    } catch (err) {
-      return res.json({ err: "parent/child task could not be found" });
-    }
-    task.parents.forEach(id => {
-      tasks
-        .doc(id)
-        .update({ children: admin.firestore.FieldValue.arrayUnion(uuid) });
-    });
-    task.children.forEach(id => {
-      tasks
-        .doc(id)
-        .update({ parents: admin.firestore.FieldValue.arrayUnion(uuid) });
-    });
-    tasks.doc(uuid).set(task);
-    task.uuid = uuid;
-    return res.json({ task: task, msg: "created new task" });
-  });
-};
-listTasks = (req, res) => {
+dbParseQueryParams = req => {
   const params = _.merge(req.body, req.query);
   const filter = {
     state: params.state !== undefined ? params.state !== "false" : undefined,
@@ -345,9 +198,90 @@ listTasks = (req, res) => {
       : undefined,
     tags: params.tags ? _.compact(_.castArray(params.tags)) : undefined
   };
-  return dbQuery(
+};
+
+dbSearch = (query, uuid, filter) => {
+  if (query.length === 0)
+    return new Promise((resolve, reject) => {
+      resolve({});
+    });
+  return dbConstructQuery(uuid, filter).then(data => {
+    var fuse = new Fuse(data, {
+      shouldSort: true,
+      threshold: 0.3,
+      location: 0,
+      distance: 256,
+      maxPatternLength: 32,
+      keys: ["id", "title", "parents", "children", "tags", "users"]
+    });
+    let results = {};
+    if (_.isArray(query)) {
+      query.forEach(queryStr => {
+        results[queryStr] = fuse.search(queryStr);
+      });
+    } else {
+      results = fuse.search(query);
+    }
+    return results;
+  });
+};
+
+dbConstructQuery = (uuid, filter) => {
+  let dbQuery = tasks.where("users", "array-contains", uuid);
+  if (filter.state) dbQuery = dbQuery.where("state", "==", filter.state);
+  if (filter.priority)
+    dbQuery = dbQuery.where("priority", "==", filter.priority);
+  if (filter.priority_gt)
+    dbQuery = dbQuery.where("priority", ">", filter.priority_gt);
+  if (filter.priority_lt)
+    dbQuery = dbQuery.where("priority", "<", filter.priority_lt);
+  if (filter.priority_ge)
+    dbQuery = dbQuery.where("priority", ">=", filter.priority_ge);
+  if (filter.priority_le)
+    dbQuery = dbQuery.where("priority", "<=", filter.priority_le);
+  if (filter.hidden) dbQuery = dbQuery.where("hidden", "==", filter.hidden);
+  if (filter.entryDate)
+    dbQuery = dbQuery.where("entryDate", "==", filter.entryDate);
+  if (filter.entrydate_gt)
+    dbQuery = dbQuery.where("entryDate", ">", filter.entryDate_gt);
+  if (filter.entryDate_lt)
+    dbQuery = dbQuery.where("entryDate", "<", filter.entryDate_lt);
+  if (filter.entryDate_ge)
+    dbQuery = dbQuery.where("entryDate", ">=", filter.entryDate_ge);
+  if (filter.entryDate_le)
+    dbQuery = dbQuery.where("entryDate", "<=", filter.entryDate_le);
+  if (filter.dueDate) dbQuery = dbQuery.where("dueDate", "==", filter.dueDate);
+  if (filter.dueDate_gt)
+    dbQuery = dbQuery.where("dueDate", ">", filter.dueDate_gt);
+  if (filter.dueDate_lt)
+    dbQuery = dbQuery.where("dueDate", "<", filter.dueDate_lt);
+  if (filter.dueDate_ge)
+    dbQuery = dbQuery.where("dueDate", ">=", filter.dueDate_ge);
+  if (filter.dueDate_le)
+    dbQuery = dbQuery.where("dueDate", "<=", filter.dueDate_le);
+  if (filter.doneDate)
+    dbQuery = dbQuery.where("doneDate", "==", filter.doneDate);
+  if (filter.doneDate_gt)
+    dbQuery = dbQuery.where("doneDate", ">", filter.doneDate_gt);
+  if (filter.doneDate_lt)
+    dbQuery = dbQuery.where("doneDate", "<", filter.doneDate_lt);
+  if (filter.doneDate_ge)
+    dbQuery = dbQuery.where("doneDate", ">=", filter.doneDate_ge);
+  if (filter.doneDate_le)
+    dbQuery = dbQuery.where("doneDate", "<=", filter.doneDate_le);
+  if (filter.modifiedDate)
+    dbQuery = dbQuery.where("modifiedDate", "==", filter.modifiedDate);
+  if (filter.modifiedDate_gt)
+    dbQuery = dbQuery.where("modifiedDate", ">", filter.modifiedDate_gt);
+  if (filter.modifiedDate_lt)
+    dbQuery = dbQuery.where("modifiedDate", "<", filter.modifiedDate_lt);
+  if (filter.modifiedDate_ge)
+    dbQuery = dbQuery.where("modifiedDate", ">=", filter.modifiedDate_ge);
+  if (filter.modifiedDate_le)
+    dbQuery = dbQuery.where("modifiedDate", "<=", filter.modifiedDate_le);
+  return dbSearch(
     _.compact(_.uniq(_.concat(filter.parents, filter.children))),
-    req.query.token,
+    uuid,
     {}
   )
     .then(queryResults => {
@@ -367,13 +301,199 @@ listTasks = (req, res) => {
               : undefined
           )
         );
-      console.log(JSON.stringify(filter));
-      return dbConstructQuery(req.query.token, filter);
+      return dbQuery.get();
     })
-    .then(data => {
-      return res.json(data);
+    .then(snapshot => {
+      let data = [];
+      snapshot.forEach(doc => {
+        if (
+          (filter.parents
+            ? _.difference(filter.parents, doc.data().parents).length === 0
+            : true) &&
+          (filter.children
+            ? _.difference(filter.children, doc.data().children).length === 0
+            : true) &&
+          (filter.tags
+            ? _.difference(filter.tags, doc.data().tags).length === 0
+            : true)
+        )
+          data.push(doc);
+      });
+      return data;
     });
-  // return res.send("BYE WORLD!");
+};
+
+createTask = (req, res) => {
+  let task = {
+    title: req.body.title || "",
+    parents: _.compact(_.castArray(req.body.parents)),
+    children: _.compact(_.castArray(req.body.children)),
+    users: _.concat(_.compact(_.castArray(req.body.users)), req.query.token),
+    tags: _.compact(_.castArray(req.body.tags)),
+    priority: _.toInteger(req.body.priority || 5),
+    hidden: req.body.hidden || false,
+    entryDate: _.now(),
+    modifiedDate: _.now(),
+    dueDate: req.body.dueDate ? _.toInteger(req.body.dueDate) : null,
+    doneDate: null,
+    state: true,
+    times: []
+  };
+  if (task.title.length === 0)
+    return res.json({ error: "task title is required to create a task" });
+  return dbQuery(
+    _.uniq(_.concat(task.parents, task.children)),
+    req.query.token,
+    {}
+  ).then(queryResults => {
+    let uuid = uuidv5(
+      task.title + req.query.token + task.entryDate.toString(),
+      uuidv5.URL
+    );
+    try {
+      task.parents = _.map(task.parents, key => queryResults[key][0].uuid);
+      task.children = _.map(task.children, key => queryResults[key][0].uuid);
+    } catch (err) {
+      return res.json({ err: "parent/child task could not be found" });
+    }
+    task.parents.forEach(id => {
+      tasks
+        .doc(id)
+        .update({ children: admin.firestore.FieldValue.arrayUnion(uuid) });
+    });
+    task.children.forEach(id => {
+      tasks
+        .doc(id)
+        .update({ parents: admin.firestore.FieldValue.arrayUnion(uuid) });
+    });
+    tasks.doc(uuid).set(task);
+    task.uuid = uuid;
+    return res.json({ task: task, msg: "created new task" });
+  });
+};
+deleteTask = (req, res) => {
+  if (!req.body.uuid)
+    return res.json({ error: "task uuid is required to delete a task" });
+  return tasks
+    .where(admin.firestore.FieldPath.documentId(), "==", req.body.uuid)
+    .limit(1)
+    .get()
+    .then(snapshot => {
+      if (snapshot.empty) return res.json({ error: "task does not exist" });
+      snapshot.forEach(doc => {
+        const id = doc.id;
+        const data = doc.data();
+        data.parents.forEach(id => {
+          tasks
+            .doc(id)
+            .update({ children: admin.firestore.FieldValue.arrayRemove(id) });
+        });
+        data.children.forEach(id => {
+          tasks
+            .doc(id)
+            .update({ parents: admin.firestore.FieldValue.arrayRemove(id) });
+        });
+      });
+      doc.delete();
+      return res.json({ msg: "deleted task" });
+    });
+};
+openTask = (req, res) => {
+  let filter = dbParseQueryParams(req);
+  filter.state = false;
+  return dbConstructQuery(req.query.token, filter).then(dbResponse => {
+    if (dbResponse.length === 0) return res.json({ error: "task not found" });
+    else if (dbResponse.length > 1)
+      return res.json({
+        error: "found multiple tasks for search",
+        data: dbResponse.map(doc => _.set(doc.data(), "uuid", doc.id))
+      });
+    let doc = dbResponse[0];
+    doc.update({ state: true });
+    return res.json({
+      msg: "opened task",
+      data: _.set(doc.data(), "uuid", doc.id)
+    });
+  });
+};
+closeTask = (req, res) => {
+  let filter = dbParseQueryParams(req);
+  filter.state = true;
+  return dbConstructQuery(req.query.token, filter).then(dbResponse => {
+    if (dbResponse.length === 0) return res.json({ error: "task not found" });
+    else if (dbResponse.length > 1)
+      return res.json({
+        error: "found multiple tasks for search",
+        data: dbResponse.map(doc => _.set(doc.data(), "uuid", doc.id))
+      });
+    let doc = dbResponse[0];
+    if (doc.data().times.length % 2 === 0)
+      doc.update({
+        state: false,
+        times: admin.firestore.FieldValue.arrayUnion(
+          admin.firestore.FieldValue.serverTimestamp()
+        )
+      });
+    else doc.update({ state: false });
+    return res.json({
+      msg: "closed task",
+      data: _.set(doc.data(), "uuid", doc.id)
+    });
+  });
+};
+startTask = (req, res) => {
+  let filter = dbParseQueryParams(req);
+  filter.state = true;
+  return dbConstructQuery(req.query.token, filter).then(dbResponse => {
+    if (dbResponse.length === 0) return res.json({ error: "task not found" });
+    else if (dbResponse.length > 1)
+      return res.json({
+        error: "found multiple tasks for search",
+        data: dbResponse.map(doc => _.set(doc.data(), "uuid", doc.id))
+      });
+    let doc = dbResponse[0];
+    if (doc.data().times.length % 2 !== 0)
+      return res.json({ error: "task already active" });
+    doc.update({
+      times: admin.firestore.FieldValue.arrayUnion(
+        admin.firestore.FieldValue.serverTimestamp()
+      )
+    });
+    return res.json({
+      msg: "started task",
+      data: _.set(doc.data(), "uuid", doc.id)
+    });
+  });
+};
+stopTask = (req, res) => {
+  let filter = dbParseQueryParams(req);
+  filter.state = true;
+  return dbConstructQuery(req.query.token, filter).then(dbResponse => {
+    if (dbResponse.length === 0) return res.json({ error: "task not found" });
+    else if (dbResponse.length > 1)
+      return res.json({
+        error: "found multiple tasks for search",
+        data: dbResponse.map(doc => _.set(doc.data(), "uuid", doc.id))
+      });
+    let doc = dbResponse[0];
+    if (doc.data().times.length % 2 === 0)
+      return res.json({ error: "task is not active" });
+    doc.update({
+      times: admin.firestore.FieldValue.arrayUnion(
+        admin.firestore.FieldValue.serverTimestamp()
+      )
+    });
+    return res.json({
+      msg: "stopped task",
+      data: _.set(doc.data(), "uuid", doc.id)
+    });
+  });
+};
+listTasks = (req, res) => {
+  let filter = dbParseQueryParams(req);
+  return dbConstructQuery(req.query.token, filter).then(dbResponse => {
+    return res.json(dbResponse.map(doc => _.set(doc.data(), "uuid", doc.id)));
+  });
 };
 nullTask = (req, res) => {
   return res.send("HELLO WORLD!");
@@ -382,11 +502,11 @@ nullTask = (req, res) => {
 exports.task = functions.https.onRequest((req, res) => {
   const targets = [
     [/\/create\/?.*/, ["POST"], createTask],
-    [/\/delete\/?.*/, ["POST"], nullTask],
-    [/\/open\/?.*/, ["POST"], nullTask],
-    [/\/close\/?.*/, ["POST"], nullTask],
-    [/\/start\/?.*/, ["POST"], nullTask],
-    [/\/stop\/?.*/, ["POST"], nullTask],
+    [/\/delete\/?.*/, ["POST"], deleteTask],
+    [/\/open\/?.*/, ["POST"], openTask],
+    [/\/close\/?.*/, ["POST"], closeTask],
+    [/\/start\/?.*/, ["POST"], startTask],
+    [/\/stop\/?.*/, ["POST"], stopTask],
     [/\/?.*/, ["POST", "GET"], listTasks]
   ];
   return dbValidUser(req.query.token).then(valid => {
