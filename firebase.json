@@ -12,11 +12,11 @@
       "**/node_modules/**"
     ],
     "rewrites": [{
-        "source": "/user",
+        "source": "api/user/**",
         "function": "user"
       },
       {
-        "source": "/task",
+        "source": "api/task/**",
         "function": "task"
       }
     ]
