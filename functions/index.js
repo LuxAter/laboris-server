@@ -31,8 +31,6 @@ dbValidUser = uuid => {
 
 createUser = (req, res) => {
   let email = req.body.email || "";
-  let firstName = req.body.firstName || "";
-  let lastName = req.body.lastName || "";
   let uuid = uuidv5(email, uuidv5.URL);
   if (
     email.length === 0 ||
@@ -44,9 +42,7 @@ createUser = (req, res) => {
     .get()
     .then(snapshot => {
       if (snapshot.empty) {
-        users
-          .doc(uuid)
-          .set({ email: email, firstName: firstName, lastName: lastName });
+        users.doc(uuid).set({ email: email });
         return res.json({
           user: { uuid: uuid, email: email },
           msg: "created new user"
