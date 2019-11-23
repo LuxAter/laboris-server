@@ -31,8 +31,6 @@ dbValidUser = uuid => {
 
 createUser = (req, res) => {
   let email = req.body.email || "";
-  let firstName = req.body.firstName || "";
-  let lastName = req.body.lastName || "";
   let uuid = uuidv5(email, uuidv5.URL);
   if (
     email.length === 0 ||
@@ -44,9 +42,7 @@ createUser = (req, res) => {
     .get()
     .then(snapshot => {
       if (snapshot.empty) {
-        users
-          .doc(uuid)
-          .set({ email: email, firstName: firstName, lastName: lastName });
+        users.doc(uuid).set({ email: email });
         return res.json({
           user: { uuid: uuid, email: email },
           msg: "created new user"
@@ -200,32 +196,6 @@ dbParseQueryParams = req => {
   };
 };
 
-dbSearch = (query, uuid, filter) => {
-  if (query.length === 0)
-    return new Promise((resolve, reject) => {
-      resolve({});
-    });
-  return dbConstructQuery(uuid, filter).then(data => {
-    var fuse = new Fuse(data, {
-      shouldSort: true,
-      threshold: 0.3,
-      location: 0,
-      distance: 256,
-      maxPatternLength: 32,
-      keys: ["id", "title", "parents", "children", "tags", "users"]
-    });
-    let results = {};
-    if (_.isArray(query)) {
-      query.forEach(queryStr => {
-        results[queryStr] = fuse.search(queryStr);
-      });
-    } else {
-      results = fuse.search(query);
-    }
-    return results;
-  });
-};
-
 dbConstructQuery = (uuid, filter) => {
   let dbQuery = tasks.where("users", "array-contains", uuid);
   if (filter.state) dbQuery = dbQuery.where("state", "==", filter.state);
@@ -323,6 +293,37 @@ dbConstructQuery = (uuid, filter) => {
     });
 };
 
+dbSearch = (
+  query,
+  uuid,
+  filter,
+  keys = ["id", "title", "parents", "children", "tags"]
+) => {
+  if (query.length === 0)
+    return new Promise((resolve, reject) => {
+      resolve({});
+    });
+  return dbConstructQuery(uuid, filter).then(data => {
+    var fuse = new Fuse(data, {
+      shouldSort: true,
+      threshold: 0.3,
+      location: 0,
+      distance: 256,
+      maxPatternLength: 32,
+      keys: keys
+    });
+    let results = {};
+    if (_.isArray(query)) {
+      query.forEach(queryStr => {
+        results[queryStr] = fuse.search(queryStr);
+      });
+    } else {
+      results = fuse.search(query);
+    }
+    return results;
+  });
+};
+
 createTask = (req, res) => {
   let task = {
     title: req.body.title || "",
@@ -341,7 +342,7 @@ createTask = (req, res) => {
   };
   if (task.title.length === 0)
     return res.json({ error: "task title is required to create a task" });
-  return dbQuery(
+  return dbSearch(
     _.uniq(_.concat(task.parents, task.children)),
     req.query.token,
     {}
