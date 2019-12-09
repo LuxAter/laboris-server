@@ -15,7 +15,7 @@ let db = admin.firestore();
 let users = db.collection("users");
 let tasks = db.collection("tasks");
 
-dbValidUser = uuid => {
+dbGetUser = uuid => {
   if (uuid === undefined)
     return new Promise((resolve, reject) => {
       resolve(false);
@@ -28,6 +28,12 @@ dbValidUser = uuid => {
       return true;
     });
 };
+dbQueryUser = email => {
+  return users
+    .where("email", "==", email)
+    .limit(1)
+    .get();
+};
 
 createUser = (req, res) => {
   let email = req.body.email || "";
@@ -37,9 +43,7 @@ createUser = (req, res) => {
     !email.match(/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/)
   )
     return res.json({ error: "invalid email format" });
-  return users
-    .where("email", "==", email)
-    .get()
+  return dbQueryUser(email)
     .then(snapshot => {
       if (snapshot.empty) {
         users.doc(uuid).set({ email: email });
@@ -61,17 +65,13 @@ deleteUser = (req, res) => {
     !email.match(/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/)
   )
     return res.json({ error: "invalid email format" });
-  return users
-    .where("email", "==", email)
-    .limit(1)
-    .get()
-    .then(snapshot => {
-      if (snapshot.empty) return res.json({ error: "user does not exist" });
-      snapshot.forEach(doc => {
-        users.doc(doc.id).delete();
-      });
-      return res.json({ msg: "deleted user" });
+  return dbQueryUser(email).then(snapshot => {
+    if (snapshot.empty) return res.json({ error: "user does not exist" });
+    snapshot.forEach(doc => {
+      users.doc(doc.id).delete();
     });
+    return res.json({ msg: "deleted user" });
+  });
 };
 
 queryUser = (req, res) => {
@@ -81,9 +81,7 @@ queryUser = (req, res) => {
     !email.match(/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/)
   )
     return res.json({ error: "invalid email format" });
-  return users
-    .doc(uuidv5(email, uuidv5.URL))
-    .get()
+  return dbGetUser(uuidv5(email, uuidv5.URL))
     .then(doc => {
       if (!doc.data()) return res.json({ error: "user does not exist" });
       return res.json({ uuid: doc.id, email: email });
@@ -249,43 +247,57 @@ dbConstructQuery = (uuid, filter) => {
     dbQuery = dbQuery.where("modifiedDate", ">=", filter.modifiedDate_ge);
   if (filter.modifiedDate_le)
     dbQuery = dbQuery.where("modifiedDate", "<=", filter.modifiedDate_le);
-  return dbSearch(
-    _.compact(_.uniq(_.concat(filter.parents, filter.children))),
-    uuid,
-    {}
-  )
-    .then(queryResults => {
-      if (filter.parents)
-        filter.parents = _.compact(
-          _.map(filter.parents, key =>
-            queryResults[key].length !== 0
-              ? queryResults[key][0].uuid
-              : undefined
+  if (filter.parents || filter.children)
+    return dbSearch(
+      _.compact(_.uniq(_.concat(filter.parents, filter.children))),
+      uuid,
+      {}
+    )
+      .then(queryResults => {
+        if (filter.parents)
+          filter.parents = _.compact(
+            _.map(filter.parents, key =>
+              queryResults[key].length !== 0
+                ? queryResults[key][0].uuid
+                : undefined
+            )
+          );
+        if (filter.children)
+          filter.children = _.compact(
+            _.map(filter.children, key =>
+              queryResults[key].length !== 0
+                ? queryResults[key][0].uuid
+                : undefined
+            )
+          );
+        return dbQuery.get();
+      })
+      .then(snapshot => {
+        let data = [];
+        snapshot.forEach(doc => {
+          if (
+            (filter.parents
+              ? _.difference(filter.parents, doc.data().parents).length === 0
+              : true) &&
+            (filter.children
+              ? _.difference(filter.children, doc.data().children).length === 0
+              : true) &&
+            (filter.tags
+              ? _.difference(filter.tags, doc.data().tags).length === 0
+              : true)
           )
-        );
-      if (filter.children)
-        filter.children = _.compact(
-          _.map(filter.children, key =>
-            queryResults[key].length !== 0
-              ? queryResults[key][0].uuid
-              : undefined
-          )
-        );
-      return dbQuery.get();
-    })
-    .then(snapshot => {
+            data.push(doc);
+        });
+        return data;
+      });
+  else
+    return dbQuery.get().then(snapshot => {
       let data = [];
       snapshot.forEach(doc => {
         if (
-          (filter.parents
-            ? _.difference(filter.parents, doc.data().parents).length === 0
-            : true) &&
-          (filter.children
-            ? _.difference(filter.children, doc.data().children).length === 0
-            : true) &&
-          (filter.tags
+          filter.tags
             ? _.difference(filter.tags, doc.data().tags).length === 0
-            : true)
+            : true
         )
           data.push(doc);
       });
@@ -293,16 +305,8 @@ dbConstructQuery = (uuid, filter) => {
     });
 };
 
-dbSearch = (
-  query,
-  uuid,
-  filter,
-  keys = ["id", "title", "parents", "children", "tags"]
-) => {
-  if (query.length === 0)
-    return new Promise((resolve, reject) => {
-      resolve({});
-    });
+dbSearch = (query, uuid, filter, keys = ["uuid", "title", "tags"]) => {
+  if (query.length === 0) return dbConstructQuery(uuid, filter);
   return dbConstructQuery(uuid, filter).then(data => {
     var fuse = new Fuse(_.map(data, o => o.data()), {
       shouldSort: true,
@@ -314,11 +318,16 @@ dbSearch = (
     });
     let results = {};
     if (_.isArray(query)) {
+      console.log("QUERY:", JSON.stringify(query));
       query.forEach(queryStr => {
-        results[queryStr] = fuse.search(queryStr);
+        const ids = _.map(fuse.search(queryStr), o => o.uuid);
+        results[queryStr] = _.filter(data, o => ids.includes(o.data().uuid));
       });
     } else {
-      results = fuse.search(query);
+      const ids = _.map(fuse.search(query), o => o.uuid);
+      results = _.filter(data, o => {
+        return ids.includes(o.data().uuid);
+      });
     }
     return results;
   });
@@ -402,7 +411,7 @@ deleteTask = (req, res) => {
 openTask = (req, res) => {
   let filter = dbParseQueryParams(req);
   filter.state = false;
-  return dbConstructQuery(req.query.token, filter).then(dbResponse => {
+  return dbSearch(req.body.ref, req.query.token, filter).then(dbResponse => {
     if (dbResponse.length === 0) return res.json({ error: "task not found" });
     else if (dbResponse.length > 1)
       return res.json({
@@ -420,7 +429,7 @@ openTask = (req, res) => {
 closeTask = (req, res) => {
   let filter = dbParseQueryParams(req);
   filter.state = true;
-  return dbConstructQuery(req.query.token, filter).then(dbResponse => {
+  return dbSearch(req.body.ref, req.query.token, filter).then(dbResponse => {
     if (dbResponse.length === 0) return res.json({ error: "task not found" });
     else if (dbResponse.length > 1)
       return res.json({
@@ -445,7 +454,7 @@ closeTask = (req, res) => {
 startTask = (req, res) => {
   let filter = dbParseQueryParams(req);
   filter.state = true;
-  return dbConstructQuery(req.query.token, filter).then(dbResponse => {
+  return dbSearch(req.body.ref, req.query.token, filter).then(dbResponse => {
     if (dbResponse.length === 0) return res.json({ error: "task not found" });
     else if (dbResponse.length > 1)
       return res.json({
@@ -455,21 +464,23 @@ startTask = (req, res) => {
     let doc = dbResponse[0];
     if (doc.data().times.length % 2 !== 0)
       return res.json({ error: "task already active" });
-    doc.update({
-      times: admin.firestore.FieldValue.arrayUnion(
-        admin.firestore.FieldValue.serverTimestamp()
-      )
+    tasks.doc(doc.id).update({
+      times: admin.firestore.FieldValue.arrayUnion(req.body.time)
     });
     return res.json({
       msg: "started task",
-      data: _.set(doc.data(), "uuid", doc.id)
+      task: _.set(
+        doc.data(),
+        "times",
+        _.concat(doc.data().times, req.body.time)
+      )
     });
   });
 };
 stopTask = (req, res) => {
   let filter = dbParseQueryParams(req);
   filter.state = true;
-  return dbConstructQuery(req.query.token, filter).then(dbResponse => {
+  return dbSearch(req.body.ref, req.query.token, filter).then(dbResponse => {
     if (dbResponse.length === 0) return res.json({ error: "task not found" });
     else if (dbResponse.length > 1)
       return res.json({
@@ -479,25 +490,24 @@ stopTask = (req, res) => {
     let doc = dbResponse[0];
     if (doc.data().times.length % 2 === 0)
       return res.json({ error: "task is not active" });
-    doc.update({
-      times: admin.firestore.FieldValue.arrayUnion(
-        admin.firestore.FieldValue.serverTimestamp()
-      )
+    tasks.doc(doc.id).update({
+      times: admin.firestore.FieldValue.arrayUnion(req.body.time)
     });
     return res.json({
       msg: "stopped task",
-      data: _.set(doc.data(), "uuid", doc.id)
+      task: _.set(
+        doc.data(),
+        "times",
+        _.concat(doc.data().times, req.body.time)
+      )
     });
   });
 };
 listTasks = (req, res) => {
   let filter = dbParseQueryParams(req);
-  return dbConstructQuery(req.query.token, filter).then(dbResponse => {
-    return res.json(dbResponse.map(doc => doc.data()));
+  return dbSearch(req.body.ref, req.query.token, filter).then(dbResponse => {
+    return res.json(_.map(dbResponse, o => o.data()));
   });
-};
-nullTask = (req, res) => {
-  return res.send("HELLO WORLD!");
 };
 
 exports.task = functions.https.onRequest((req, res) => {
@@ -510,7 +520,7 @@ exports.task = functions.https.onRequest((req, res) => {
     [/\/stop\/?.*/, ["POST"], stopTask],
     [/\/?.*/, ["POST", "GET"], listTasks]
   ];
-  return dbValidUser(req.query.token).then(valid => {
+  return dbGetUser(req.query.token).then(valid => {
     if (!valid) return res.json({ error: "user token is not valid" });
     for (const i in targets) {
       if (req.path.match(targets[i][0]) && targets[i][1].includes(req.method))
