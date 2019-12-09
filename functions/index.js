@@ -124,7 +124,7 @@ exports.user = functions.https.onRequest((req, res) => {
 
 dbParseQueryParams = req => {
   const params = _.merge(req.body, req.query);
-  const filter = {
+  return (filter = {
     state: params.state !== undefined ? params.state !== "false" : undefined,
     priority: params.priority ? _.toInteger(params.priority) : undefined,
     priority_gt: params.priority_gt
@@ -193,7 +193,7 @@ dbParseQueryParams = req => {
       ? _.compact(_.castArray(params.children))
       : undefined,
     tags: params.tags ? _.compact(_.castArray(params.tags)) : undefined
-  };
+  });
 };
 
 dbConstructQuery = (uuid, filter) => {
@@ -304,7 +304,7 @@ dbSearch = (
       resolve({});
     });
   return dbConstructQuery(uuid, filter).then(data => {
-    var fuse = new Fuse(data, {
+    var fuse = new Fuse(_.map(data, o => o.data()), {
       shouldSort: true,
       threshold: 0.3,
       location: 0,
@@ -355,7 +355,7 @@ createTask = (req, res) => {
       task.parents = _.map(task.parents, key => queryResults[key][0].uuid);
       task.children = _.map(task.children, key => queryResults[key][0].uuid);
     } catch (err) {
-      return res.json({ err: "parent/child task could not be found" });
+      return res.json({ error: "parent/child task could not be found" });
     }
     task.parents.forEach(id => {
       tasks
@@ -493,7 +493,7 @@ stopTask = (req, res) => {
 listTasks = (req, res) => {
   let filter = dbParseQueryParams(req);
   return dbConstructQuery(req.query.token, filter).then(dbResponse => {
-    return res.json(dbResponse.map(doc => _.set(doc.data(), "uuid", doc.id)));
+    return res.json(dbResponse.map(doc => doc.data()));
   });
 };
 nullTask = (req, res) => {
