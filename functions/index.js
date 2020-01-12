@@ -318,7 +318,6 @@ dbSearch = (query, uuid, filter, keys = ["uuid", "title", "tags"]) => {
     });
     let results = {};
     if (_.isArray(query)) {
-      console.log("QUERY:", JSON.stringify(query));
       query.forEach(queryStr => {
         const ids = _.map(fuse.search(queryStr), o => o.uuid);
         results[queryStr] = _.filter(data, o => ids.includes(o.data().uuid));
@@ -331,6 +330,20 @@ dbSearch = (query, uuid, filter, keys = ["uuid", "title", "tags"]) => {
     }
     return results;
   });
+};
+
+serializeTasks = (token, tasks) => {
+  let parents = _.uniq(_.concat(..._.map(tasks, o => o.parents)));
+  let children = _.uniq(_.concat(..._.map(tasks, o => o.children)));
+  return dbSearch(_.uniq(_.concat(parents, children)), token, {}).then(queryResults => {
+    let results = [];
+    tasks.forEach(tsk => {
+      tsk.parents = _.map(tsk.parents, id => queryResults[id][0].data().title);
+      tsk.children= _.map(tsk.children, id => queryResults[id][0].data().title);
+      results.push(tsk);
+    });
+    return results;
+  })
 };
 
 createTask = (req, res) => {
@@ -361,8 +374,8 @@ createTask = (req, res) => {
       uuidv5.URL
     );
     try {
-      task.parents = _.map(task.parents, key => queryResults[key][0].uuid);
-      task.children = _.map(task.children, key => queryResults[key][0].uuid);
+      task.parents = _.map(task.parents, key => queryResults[key][0].data().uuid);
+      task.children = _.map(task.children, key => queryResults[key][0].data().uuid);
     } catch (err) {
       return res.json({ error: "parent/child task could not be found" });
     }
@@ -393,18 +406,18 @@ deleteTask = (req, res) => {
       snapshot.forEach(doc => {
         const id = doc.id;
         const data = doc.data();
-        data.parents.forEach(id => {
+        data.parents.forEach(parentId => {
           tasks
-            .doc(id)
+            .doc(parentId)
             .update({ children: admin.firestore.FieldValue.arrayRemove(id) });
         });
-        data.children.forEach(id => {
+        data.children.forEach(childId => {
           tasks
-            .doc(id)
+            .doc(childId)
             .update({ parents: admin.firestore.FieldValue.arrayRemove(id) });
         });
+        doc.ref.delete();
       });
-      doc.delete();
       return res.json({ msg: "deleted task" });
     });
 };
@@ -506,7 +519,9 @@ stopTask = (req, res) => {
 listTasks = (req, res) => {
   let filter = dbParseQueryParams(req);
   return dbSearch(req.body.ref, req.query.token, filter).then(dbResponse => {
-    return res.json(_.map(dbResponse, o => o.data()));
+    return serializeTasks(req.query.token, _.map(dbResponse, o => o.data()));
+  }).then(dbResponse => {
+    return res.json(dbResponse);
   });
 };
 
