@@ -1,6 +1,8 @@
 const _ = require('lodash');
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
+const bcrypt = require('bcrypt');
+const uuidv5 = require('uuid/v5');
 
 const serviceAccount =
     require('./laboris-dc537-firebase-adminsdk-jecpz-9c6f7b8246.json');
@@ -11,8 +13,49 @@ admin.initializeApp({
 });
 
 let db = admin.firestore();
+let users = db.collection('users');
 let tasks = db.collection('tasks');
 
+exports.user = functions.https.onRequest((req, res) => {
+  if (req.method === 'POST') {
+    if (req.path === '/create/') {
+      return users.doc(req.body.email).get().then(docSnap => {
+        if (docSnap.exists)
+          return res.json({error: `Email "${req.body.email} already in use`});
+        return bcrypt.hash(req.body.password, 10).then(hash => {
+          const userUuid = uuidv5(req.body.email + hash, uuidv5.URL);
+          return users.doc(req.body.email)
+              .set({email: req.body.email, password: hash, uuid: userUuid})
+              .then(_writeRes => {
+                return res.json({
+                  success: `Created new user for "${req.body.email}`,
+                  email: req.body.email,
+                  uuid: userUuid
+                });
+              });
+        });
+      });
+    } else if (req.path === '/signin/') {
+      return users.doc(req.body.email).get().then(docSnap => {
+        if (!docSnap.exists)
+          return res.json({error: `No user with email: "${req.body.email}"`});
+        const doc = docSnap.data();
+        return bcrypt.compare(req.body.password, doc.password).then(match => {
+          if (match)
+            return res.json(
+                {success: `Signed on as "${req.body.email}"`, uuid: doc.uuid});
+          else
+            return res.json(
+                {error: `Incorrect password for "${req.body.email}"`});
+        });
+      });
+    } else {
+      return res.json({error: 'endpoint not found'});
+    }
+  } else {
+    return res.json({error: 'endpoint not found'});
+  }
+});
 
 exports.task = functions.https.onRequest((req, res) => {
   if (req.query.uuid !== undefined) {
