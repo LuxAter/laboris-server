@@ -22,6 +22,25 @@
 }
 ```
 
+# Actions
+
+* create
+* modify
+* start
+* stop
+* open
+* close
+* user
+  * signin
+  * signout
+  * create
+  * delete
+* config
+* report
+  * autolist
+  * detail
+  * list
+
 # Option 1
 
 Server only
