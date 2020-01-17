@@ -73,3 +73,8 @@ Store list of commands for each task on the server, then the database locally fo
 ## Cons
 * Stores lots of data on the server?
 * Makes it difficult for a webinterface, or any interface that does not have stored data.
+
+# Server Syncing
+
+* Users id is the uuid
+* Each user stores all of their own data.
