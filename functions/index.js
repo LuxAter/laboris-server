@@ -41,7 +41,7 @@ const userSignin = (req, res) => {
       .then(snapshot => {
         if (snapshot.empty)
           return res.json({error: `No user with email "${req.body.email}"`});
-        snapshot.forEach(doc => {
+        return snapshot.forEach(doc => {
           const data = doc.data();
           return bcrypt.compare(req.body.password, data.password)
               .then(match => {
