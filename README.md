@@ -22,6 +22,25 @@
 }
 ```
 
+# Actions
+
+* create
+* modify
+* start
+* stop
+* open
+* close
+* user
+  * signin
+  * signout
+  * create
+  * delete
+* config
+* report
+  * autolist
+  * detail
+  * list
+
 # Option 1
 
 Server only
@@ -63,7 +82,7 @@ Store list of commands for each task on the server, then the database locally fo
 * Store recent action logs of the data on the client
 * Simply add and retrieve actions with every call
 * Update data on the client
-  
+
 ## Pros
 * Can run offline
 * Very easy server code
