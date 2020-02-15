@@ -86,7 +86,7 @@ const userTasks = (req, res) => {
 };
 
 const invalidAPI = (req, res) => {
-  return res.json({ error: `Invalid API target ${req.path}` });
+  return res.json({ error: `Invalid API target ${req.path}[${req.method}]` });
 };
 
 const userGet = (req, res) => {
@@ -113,7 +113,32 @@ const taskPull = (req, res) => {
     .doc(req.query.task)
     .get()
     .then(doc => {
-      return res.json(doc.data());
+      let response = {};
+      response[doc.id] = doc.data();
+      return res.json(response);
+    });
+};
+const taskPullPost = (req, res) => {
+  if (req.body.tasks.length === 1) {
+    req.query.task = req.body.tasks[0];
+    return taskPull(req, res);
+  }
+  return db
+    .getAll(
+      ..._.map(req.body.tasks, uuid =>
+        db
+          .collection("users")
+          .doc(req.query.user)
+          .collection("tasks")
+          .doc(uuid)
+      )
+    )
+    .then(docSnap => {
+      let response = {};
+      docSnap.forEach(doc => {
+        if (doc.exists) response[doc.id] = doc.data();
+      });
+      return res.json(response);
     });
 };
 const taskPush = (req, res) => {
@@ -170,7 +195,8 @@ const taskGet = (req, res) => {
   return invalidAPI(req, res);
 };
 const taskPost = (req, res) => {
-  if (req.path === "/push/") return taskPush(req, res);
+  if (req.path === "/pull/") return taskPullPost(req, res);
+  else if (req.path === "/push/") return taskPush(req, res);
   else if (req.path === "/create/") return taskCreate(req, res);
   else if (req.path === "/delete/") return taskDelete(req, res);
   return invalidAPI(req, res);
